@@ -6,6 +6,7 @@ Baruník, J. and Vacha, L. (2023): *The Dynamic Persistence of Economic Shocks*,
 
 Baruník, J. and Vacha, L. (2024): *Forecasting Volatility of Oil-based Commodities: The Model of Dynamic Persistence*, manuscript [available here for download](https://arxiv.org/pdf/2402.01354.p
 
+*Code created in collaboration with Jiří Mikulenka*
 ## Software requirements
 
 Install [Julia](http://julialang.org/) version 1.6.0 or newer and with the first use of this code install the same version of packages with which the projects is built and work in the environment of the project as
