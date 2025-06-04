@@ -29,6 +29,7 @@ using CSV, DataFrames,GLM
 using Distributions, LinearAlgebra, Statistics
 using Plots, StatsBase, StatsPlots, Colors
 using Random
+using BSON: @save, @load
 ```
 
 Load files containing core functions:
@@ -44,6 +45,8 @@ Load example data:
 ```julia
 data_read=CSV.File("example_data.csv",missingstring=["NA"],header=true) |> DataFrame;
 data0=100.0.*data_read.A[ismissing.(data_read.A).==false];
+date_vector = data_read[ismissing.(data_read.A).==false,:dates];
+date_vector = Date.(date_vector, "dd.mm.yyyy");
 ```
 
 ### Part 1: Plot persistence decomposition
