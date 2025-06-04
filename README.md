@@ -6,11 +6,11 @@ Baruník, J. and Vacha, L. (2023): *The Dynamic Persistence of Economic Shocks*,
 
 Baruník, J., & Vácha, L. (2024). *Predicting the volatility of major energy commodity prices: The dynamic persistence model*. Energy Economics, 140, 107982 [link](https://doi.org/10.1016/j.eneco.2024.107982)
 
-*Code by Jiří Mikulenka (based on the original codes by J.Barunik and L.Vacha)*
+*Package created by Jiří Mikulenka based on the original codes by J.Barunik and L.Vacha*
 
 ## Software requirements
 
-Install [Julia](http://julialang.org/) version 1.6.0 or newer and with the first use of this code install the same version of packages with which the projects is built and work in the environment of the project as
+Install [Julia](http://julialang.org/) version 1.10.5 or newer and with the first use of this code install the same version of packages with which the projects is built and work in the environment of the project as
 
 ```julia
 using Pkg
