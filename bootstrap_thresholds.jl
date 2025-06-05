@@ -345,7 +345,7 @@ function calculate_bootstrap_threshold(
                 errs
             elseif benchmark_method == :tvEWD
                 # Pass forecast_window_size = forecast_length (Int or "Maximum")
-                _, _, errs = tvEWD_forecast_test_4(
+                _, _, errs = tvEWD_forecast(
                     simulated_series,
                     in_sample_window_size,
                     forecast_horizon,
