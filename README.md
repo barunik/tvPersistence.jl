@@ -119,17 +119,36 @@ Here we compare the TV-EWD forecasting approach with the benchmark HAR model thr
 ```julia
 include("bootstrap_thresholds.jl") # file containing the function
 
+
+include("bootstrap_thresholds.jl")
+
+ar_order = 22
+in_sample_window = 1000
+forecast_horizon = 22
+num_replicates = 30
+smoothing_bw = 0.05
+cutoff_start = 100
+forecast_length = 100
+
+# Choose one benchmark and one comparison method:
+bench = :HAR
+comp  = :tvEWD  # or :TVHAR, or :tvEWD
+
+@load "all_forecasts_V2.bson" forecasts
+har_e    = forecasts.har_e
+TV_EWD_e  = forecasts.TV_EWD_e
+
 threshold_fixed = calculate_bootstrap_threshold(
     data0,
-    ar_order = 22,
-    in_sample_window = 1000,
-    forecast_horizon = 22,
-    num_replicates = 30,
-    smoothing_bw = 0.05,
-    cutoff_start = 100,
-    benchmark_method = :HAR,
-    comparison_method = :tvEWD;
-    forecast_length = 100,
+    ar_order,
+    in_sample_window,
+    forecast_horizon,
+    num_replicates,
+    smoothing_bw,
+    cutoff_start,
+    bench,
+    comp;
+    forecast_length,
     random_seed = 42,
     tvp_kernel_width = 0.4,
     kernel_type = "Gaussian",
