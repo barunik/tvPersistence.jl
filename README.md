@@ -119,9 +119,6 @@ Here we compare the TV-EWD forecasting approach with the benchmark HAR model thr
 ```julia
 include("bootstrap_thresholds.jl") # file containing the function
 
-
-include("bootstrap_thresholds.jl")
-
 ar_order = 22
 in_sample_window = 1000
 forecast_horizon = 22
