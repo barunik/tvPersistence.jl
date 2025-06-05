@@ -211,5 +211,5 @@ println("95%-threshold for smoothed dSED (", bench, " vs ", comp, "): ", thresho
 threshold = 0.000558995384944377
 
 # Imported from outside, possibly not correct thresholds
-tvEWD_vs_HAR_pockets = plot_pockets(Float64.(winsor(har_e,prop=0.05)), Float64.(winsor(TV_EWD_e,prop=0.05)), forecast_dates, 0.01,threshold; title = "TV-EWD vs. HAR (h=1)")
+tvEWD_vs_HAR_pockets = plot_pockets(Float64.(winsor(har_e,prop=0.05)), Float64.(winsor(TV_EWD_e,prop=0.05)), forecast_dates, 0.01,threshold_fixed; title = "TV-EWD vs. HAR (h=1)")
 display(tvEWD_vs_HAR_pockets)
