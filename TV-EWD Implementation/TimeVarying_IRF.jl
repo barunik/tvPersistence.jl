@@ -3,9 +3,6 @@ using LinearAlgebra
 include(joinpath(@__DIR__, "..", "models", "tvOLS.jl"))
 using .tvOLS_estimator  # Importing local tvOLS module
 
-using RCall
-R"library(tvReg)"
-
 # Helper function to compute residuals
 function compute_residuals(response_data, regressor_data, coefficients::Matrix{Float64})::Vector{Float64}
     residuals = zeros(length(response_data))

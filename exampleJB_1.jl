@@ -3,6 +3,7 @@ using Pkg
 Pkg.activate(".")
 # Instantiate the environment, which installs exact versions of dependencies
 Pkg.instantiate()
+
 using CSV, DataFrames,GLM
 using Distributions, LinearAlgebra, Statistics
 using Plots, StatsBase, StatsPlots, Colors
@@ -176,6 +177,10 @@ forecast_length = 100
 bench = :HAR
 comp  = :tvEWD  # or :TVHAR, or :tvEWD
 
+@load "all_forecasts_V2.bson" forecasts
+har_e    = forecasts.har_e
+TV_EWD_e  = forecasts.TV_EWD_e
+
 threshold_fixed = calculate_bootstrap_threshold(
     data0,
     ar_order,
@@ -201,11 +206,8 @@ threshold_fixed = calculate_bootstrap_threshold(
 # Calculated value: 0.000558995384944377
 println("95%-threshold for smoothed dSED (", bench, " vs ", comp, "): ", threshold_fixed)
 # Load the single `forecasts` object from disk
-@load "all_forecasts_V2.bson" forecasts
 
 # `forecasts` is now a NamedTuple containing all of your vectors.
-har_e    = forecasts.har_e
-TV_EWD_e  = forecasts.TV_EWD_e
 threshold = 0.000558995384944377
 
 # Imported from outside, possibly not correct thresholds

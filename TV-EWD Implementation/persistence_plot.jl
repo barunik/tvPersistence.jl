@@ -3,9 +3,6 @@ include("TV-EWD.jl")
 include("TimeVarying_IRF.jl")
 include("Helper_functions.jl")
 
-using RCall
-R"library(tvReg)"
-
 # Import packages
 using .tvOLS_estimator
 using CSV, DataFrames,GLM
