@@ -2,13 +2,15 @@
 
 The code has been developed in Julia as a code accompanying the Barunik and Vacha (2023) and Barunik and Vacha (2024) papers, and provides estimation of time-varying persistence using *localised heterogeneous persistence*:
 
-Baruník, J. and Vacha, L. (2023): *The Dynamic Persistence of Economic Shocks*, manuscript [available here for download](https://ideas.repec.org/p/arx/papers/2306.01511.html)
+Baruník, J. and Vacha, L. (2023): *The Dynamic Persistence of Economic Shocks*, forthcoming in the Review of Economics and Statistics,  [link](https://ideas.repec.org/p/arx/papers/2306.01511.html)
 
-Baruník, J. and Vacha, L. (2024): *Forecasting Volatility of Oil-based Commodities: The Model of Dynamic Persistence*, manuscript [available here for download](https://arxiv.org/pdf/2402.01354.p
+Baruník, J., & Vácha, L. (2024). *Predicting the volatility of major energy commodity prices: The dynamic persistence model*. Energy Economics, 140, 107982 [link](https://doi.org/10.1016/j.eneco.2024.107982)
+
+*Package created by Jiří Mikulenka based on the original codes by J.Barunik and L.Vacha*
 
 ## Software requirements
 
-Install [Julia](http://julialang.org/) version 1.6.0 or newer and with the first use of this code install the same version of packages with which the projects is built and work in the environment of the project as
+Install [Julia](http://julialang.org/) version 1.10.5 or newer and with the first use of this code install the same version of packages with which the projects is built and work in the environment of the project as
 
 ```julia
 using Pkg
@@ -27,6 +29,7 @@ using CSV, DataFrames,GLM
 using Distributions, LinearAlgebra, Statistics
 using Plots, StatsBase, StatsPlots, Colors
 using Random
+using BSON: @save, @load
 ```
 
 Load files containing core functions:
@@ -42,6 +45,8 @@ Load example data:
 ```julia
 data_read=CSV.File("example_data.csv",missingstring=["NA"],header=true) |> DataFrame;
 data0=100.0.*data_read.A[ismissing.(data_read.A).==false];
+date_vector = data_read[ismissing.(data_read.A).==false,:dates];
+date_vector = Date.(date_vector, "dd.mm.yyyy");
 ```
 
 ### Part 1: Plot persistence decomposition
