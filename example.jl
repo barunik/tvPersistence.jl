@@ -165,13 +165,13 @@ mycolor=[colorant"rgb(222,102,62)",colorant"rgb(255,145,43)",colorant"rgb(76,144
 # Bootstrap threshold calculation
 include("bootstrap_thresholds.jl")
 
-ar_order = 22
+ar_order = 1
 in_sample_window = 1000
-forecast_horizon = 22
-num_replicates = 30
-smoothing_bw = 0.05
+forecast_horizon = 1
+num_replicates = 100
+smoothing_bw = 0.0176
 cutoff_start = 100
-forecast_length = 100
+forecast_length = fcast_length
 
 # Choose one benchmark and one comparison method:
 bench = :HAR
@@ -192,24 +192,25 @@ threshold_fixed = calculate_bootstrap_threshold(
     bench,
     comp;
     forecast_length,
-    random_seed = 42,
+    random_seed = 0,
     tvp_kernel_width = 0.4,
     kernel_type = "Gaussian",
-    max_ar_order = 15,
-    jmax_scale = 7,
+    max_ar_order = 2,
+    jmax_scale = 5,
     ar_lag_for_trend = 1,
-    tvp_constant_kernel_width = 0.1,
+    tvp_constant_kernel_width = 0.05,
     irf_kernel_width = 0.2,
-    forecast_kernel_width = 0.4
+    forecast_kernel_width = 0.5
 )
 
-# Calculated value: 0.000558995384944377
+# Calculated value: 2.066830453726511e-6
+threshold_fixed = 2.066830453726511e-6
 println("95%-threshold for smoothed dSED (", bench, " vs ", comp, "): ", threshold_fixed)
 # Load the single `forecasts` object from disk
-
-# `forecasts` is now a NamedTuple containing all of your vectors.
-threshold = 0.000558995384944377
 
 # Imported from outside, possibly not correct thresholds
 tvEWD_vs_HAR_pockets = plot_pockets(Float64.(winsor(har_e,prop=0.05)), Float64.(winsor(TV_EWD_e,prop=0.05)), forecast_dates, 0.01,threshold_fixed; title = "TV-EWD vs. HAR (h=1)")
 display(tvEWD_vs_HAR_pockets)
+
+savefig("pockets_of_predictability_example.svg")
+

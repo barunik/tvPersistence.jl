@@ -462,7 +462,8 @@ function tvEWD_forecast(
         # Forecasted value calculation
         forecasted_values[ii+1]=(horizon^(-1).*forecast_scale_component_data[end,:])'*[horizon*scale_component_weights[1]; scale_component_weights[2:end]];
         realized_values[ii+1] = centered_data[chron_sample_end + 1] # We always forecast the value just outside the sample
-        residuals[ii+1] = realized_values[ii+1] - forecasted_values[ii+1]
+        #residuals[ii+1] = realized_values[ii+1] - forecasted_values[ii+1]
+        residuals[ii+1] = forecasted_values[ii+1] - realized_values[ii+1]
     end
     return (forecasted_values, realized_values, residuals)
 end

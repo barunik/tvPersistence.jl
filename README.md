@@ -116,16 +116,21 @@ display(plot([actual_test forecast_test], label=["Data" "Forecast"],frame=:box))
 Here we compare the TV-EWD forecasting approach with the benchmark HAR model through Pockets of Predictability, generating a plot that clearly shows non-spurious pockets given a confidence threshold obtained through bootstrap simulations:
 
 #### Step 1: Calculate the threshold
+
+Note this step is computationally expensive, and to replicate teh results from the paper one needs to use server with multiple cores, as we have used median of  496 stocks.
+
+The functions allowing to use multiple cores will be added to this package soon.
+
 ```julia
 include("bootstrap_thresholds.jl") # file containing the function
 
-ar_order = 22
+ar_order = 1
 in_sample_window = 1000
-forecast_horizon = 22
-num_replicates = 30
-smoothing_bw = 0.05
+forecast_horizon = 1
+num_replicates = 100
+smoothing_bw = 0.0176
 cutoff_start = 100
-forecast_length = 100
+forecast_length = fcast_length
 
 # Choose one benchmark and one comparison method:
 bench = :HAR
@@ -146,15 +151,15 @@ threshold_fixed = calculate_bootstrap_threshold(
     bench,
     comp;
     forecast_length,
-    random_seed = 42,
+    random_seed = 0,
     tvp_kernel_width = 0.4,
     kernel_type = "Gaussian",
-    max_ar_order = 15,
-    jmax_scale = 7,
+    max_ar_order = 2,
+    jmax_scale = 5,
     ar_lag_for_trend = 1,
-    tvp_constant_kernel_width = 0.1,
+    tvp_constant_kernel_width = 0.05,
     irf_kernel_width = 0.2,
-    forecast_kernel_width = 0.4
+    forecast_kernel_width = 0.5
 )
 ```
 
@@ -214,7 +219,12 @@ xtickfontsize  = xtick_fontsize,
         ylabelfontsize = ylabel_fontsize)
 ```
 
+The threshold used in the paper has been computed on severs as median of all 496 stocks and hence we here use the value to reproduce the plot
+
 ```julia
+
+threshold_fixed = 2.066830453726511e-6
+
 # Winsorize forecast errors
 har_e = Float64.(winsor(forecasts.har_e, prop=0.05))
 TV_EWD_e = Float64.(winsor(forecasts.TV_EWD_e, prop=0.05))
