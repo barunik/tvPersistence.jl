@@ -425,6 +425,7 @@ function calculate_bootstrap_threshold(
             smoothing_bandwidth,
             "one-sided"
         )
+        
     end
 
     @info "All bootstrap replicates generated."

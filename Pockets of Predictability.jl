@@ -245,15 +245,15 @@ function plot_pockets(
 
     # 6) overlay the SED line and horizontal thresholds
     plot!(p, sed_curve, color = sed_line_color)
-    for thr in threshold_levels
+    #for thr in threshold_levels
         hline!(
             p,
-            [thr];
+            [0];
             linestyle = hline_style,
             color     = hline_color,
             label     = false
         )
-    end
+    #end
 
     return p
 end
