@@ -12,7 +12,7 @@
 #     to estimate a one-sided statistical threshold on smoothed forecast error differences.
 #
 # Dependencies:
-#   - Forecasting models (e.g., ARp_forecast, TVAR_forecast, tvEWD_forecast_test_4)
+#   - Forecasting models (e.g., ARp_forecast, TVAR_forecast, tvEWD_forecast)
 #   - SED smoothing utilities
 #   - TV-OLS estimator module
 # ================================================================
@@ -56,7 +56,7 @@ function fit_ar_model(
 
     fitted_values = design_matrix * coefficient_vector
     residual_vector = y .- fitted_values
-    residual_standard_deviation = std(residual_vector, corrected=true)
+    residual_standard_deviation = std(residual_vector)
 
     return coefficient_vector, residual_standard_deviation, residual_vector
 end
@@ -242,7 +242,7 @@ function calculate_bootstrap_threshold(
         comparison_method::Symbol;
         forecast_length::Union{Int,String} = "Maximum",
         alpha_level::Float64 = 0.05,
-        random_seed::Int = 0,
+        random_seed::Int = 0, # No random seed by default
         tvp_kernel_width::Float64 = 0.4,
         kernel_type::String = "Gaussian",
         max_ar_order::Int = 15,
@@ -253,7 +253,7 @@ function calculate_bootstrap_threshold(
         forecast_kernel_width::Float64 = 0.4
     )::Float64
 
-    # 0) Set random seed if provided
+    # Set random seed if provided
     if random_seed != 0
         Random.seed!(random_seed)
     end
@@ -432,4 +432,3 @@ function calculate_bootstrap_threshold(
     # Compute and return the single global threshold calculated as the 1-alpha quantile
     return compute_global_threshold(smoothed_sed_collection, cutoff_start_index, alpha_level)
 end
-

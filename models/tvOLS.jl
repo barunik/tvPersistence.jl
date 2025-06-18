@@ -71,58 +71,57 @@ The `tvOLS` function performs local linear regression to estimate time-varying c
 """
 
 function tvOLS(x, y, bw::Float64,
-               tkernel::String = "Gaussian")
+               tkernel::String = "Gaussian";
+               singular_ok::Bool = true)
 
-    # Ensure dimensions of x and y match
     obs = size(x, 1)
     if length(y) != obs
         error("Dimensions of 'x' and 'y' are not compatible.")
     end
 
-    nvar = size(x, 2)  # Number of variables (columns of x)
-    
-    # Initialize containers for results
-    theta = zeros(obs, nvar)  # Coefficients
-    fitted = zeros(obs)  # Fitted values
-    residuals = zeros(obs)  # Residuals
-    
-    # Calculate the rescaled distances of time points
+    nvar = size(x, 2)
+    theta = zeros(obs, nvar)
+    fitted = zeros(obs)
+    residuals = zeros(obs)
+
     grid = collect(1:obs) / obs
-    
-    # Estimate the local regression coefficients for all periods
+
     for t in 1:obs
-
-        # Compute the kernel weights for the current time point t
-        tau0 = grid .- grid[t]  # Distance from time t to all other points
+        tau0 = grid .- grid[t]
         kernel_weights = kernel(tau0, bw, tkernel)
-
-        # Select only the points with non-zero kernel weights
         k_idx = findall(kernel_weights .> 0)
 
         if length(k_idx) < 1
             error("Bandwidth too small for 'bw'.")
         end
 
-        # Weighted least squares regression for time t
         x_temp = x[k_idx, :]
         y_temp = y[k_idx]
         w_temp = kernel_weights[k_idx]
 
-        # Perform the weighted OLS
-        XW = x_temp .* sqrt.(w_temp)  # Apply square root of weights to X
-        yW = y_temp .* sqrt.(w_temp)  # Apply square root of weights to y
-        #coef = XW \ yW  # OLS: Solve for coefficients with alternative method
-        coef = (XW' * XW) \ (XW' * yW)
+        XW = x_temp .* sqrt.(w_temp)
+        yW = y_temp .* sqrt.(w_temp)
 
-        # Store the time-varying coefficients for time t
-        theta[t, :] = coef'
-        
-        # Compute fitted values and residuals
-        fitted[t] = dot(x[t, :], coef)
-        residuals[t] = y[t] - fitted[t]
+        try
+            coef = (XW' * XW) \ (XW' * yW)
+            theta[t, :] = coef'
+            fitted[t] = dot(x[t, :], coef)
+            residuals[t] = y[t] - fitted[t]
+        catch e
+            if e isa LinearAlgebra.SingularException
+                if singular_ok
+                    theta[t, :] .= NaN
+                    fitted[t] = NaN
+                    residuals[t] = NaN
+                else
+                    rethrow(e)
+                end
+            else
+                rethrow(e)
+            end
+        end
     end
 
-    # Return the time-varying coefficients, fitted values, and residuals
     return (coefficients = theta, fitted = fitted, residuals = residuals)
 end
 

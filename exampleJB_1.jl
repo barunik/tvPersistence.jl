@@ -181,7 +181,7 @@ comp  = :tvEWD  # or :TVHAR, or :tvEWD
 har_e    = forecasts.har_e
 TV_EWD_e  = forecasts.TV_EWD_e
 
-threshold_fixed = calculate_bootstrap_threshold(
+threshold = calculate_bootstrap_threshold(
     data0,
     ar_order,
     in_sample_window,
@@ -195,7 +195,7 @@ threshold_fixed = calculate_bootstrap_threshold(
     random_seed = 42,
     tvp_kernel_width = 0.4,
     kernel_type = "Gaussian",
-    max_ar_order = 15,
+    max_ar_order = 5,
     jmax_scale = 7,
     ar_lag_for_trend = 1,
     tvp_constant_kernel_width = 0.1,
@@ -203,11 +203,8 @@ threshold_fixed = calculate_bootstrap_threshold(
     forecast_kernel_width = 0.4
 )
 
-# Calculated value: 0.000558995384944377
-println("95%-threshold for smoothed dSED (", bench, " vs ", comp, "): ", threshold_fixed)
-# Load the single `forecasts` object from disk
 
-# `forecasts` is now a NamedTuple containing all of your vectors.
+println("95%-threshold for smoothed dSED (", bench, " vs ", comp, "): ", threshold_fixed)
 threshold = 0.000558995384944377
 
 # Imported from outside, possibly not correct thresholds

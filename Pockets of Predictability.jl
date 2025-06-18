@@ -54,11 +54,17 @@ using a local‐regression (tvOLS) smoother.
 function SED_smooth_one(benchmark_forecast_error,# Vector of benchmark model forecast errors
         model_forecast_error, # Vector of new model forecast errors
         kernel_width,
-        kernel_type::String = "one-sided")
-    data=benchmark_forecast_error.^2 .- model_forecast_error.^2; # Squared Error Difference as the dependent variable
+        kernel_type::String = "one-sided",
+        include_intercept::Bool = true)
+    data = benchmark_forecast_error.^2 .- model_forecast_error.^2; # Squared Error Difference as the dependent variable
     
-    t = [t for t in 1.0:1.0:length(data)] # time periods as independent variables
-    result1 = tvOLS_estimator.tvOLS(t, data, kernel_width, kernel_type) # we need fitted values to estimate the SED
+    if include_intercept == true
+        regressor_data = hcat(ones(length(data)), [t for t in 1:length(data)]) # time periods as independent variables, constant included
+    else
+        regressor_data = [t for t in 1:length(data)]
+    end
+
+    result1 = tvOLS_estimator.tvOLS(regressor_data, data, kernel_width, kernel_type) # we need fitted values to estimate the SED
     return result1.fitted
 end
 
