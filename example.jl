@@ -195,31 +195,19 @@ threshold = calculate_bootstrap_threshold(
     random_seed = 0,
     tvp_kernel_width = 0.4,
     kernel_type = "Gaussian",
-<<<<<<< HEAD:exampleJB_1.jl
-    max_ar_order = 5,
-    jmax_scale = 7,
-=======
     max_ar_order = 2,
     jmax_scale = 5,
->>>>>>> 94e463a7e5ae5fe0d1bc8cb782cc519c8aa42144:example.jl
     ar_lag_for_trend = 1,
     tvp_constant_kernel_width = 0.05,
     irf_kernel_width = 0.2,
     forecast_kernel_width = 0.5
 )
 
-<<<<<<< HEAD:exampleJB_1.jl
-
-println("95%-threshold for smoothed dSED (", bench, " vs ", comp, "): ", threshold_fixed)
-threshold = 0.000558995384944377
-
-=======
 # Calculated value: 2.066830453726511e-6
 threshold_fixed = 2.066830453726511e-6
 println("95%-threshold for smoothed dSED (", bench, " vs ", comp, "): ", threshold_fixed)
 # Load the single `forecasts` object from disk
 
->>>>>>> 94e463a7e5ae5fe0d1bc8cb782cc519c8aa42144:example.jl
 # Imported from outside, possibly not correct thresholds
 tvEWD_vs_HAR_pockets = plot_pockets(Float64.(winsor(har_e,prop=0.05)), Float64.(winsor(TV_EWD_e,prop=0.05)), forecast_dates, 0.01,threshold_fixed; title = "TV-EWD vs. HAR (h=1)")
 display(tvEWD_vs_HAR_pockets)
