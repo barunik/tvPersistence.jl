@@ -143,7 +143,7 @@ To run the script, open a terminal (e.g. Git Bash on Windows) and execute:
 The configuration file passed via -f is a plain text file with one key-value pair per line. Lines starting with # are comments. Example parameters set in file `example_config.txt`.
 
 ##### Example:
-Example below prints a threshold of  0.0011691094423573072 into the terminal, calculated from 30 runs of the bootstrap simulated series on 3 cores.
+Example below prints a threshold X into the terminal, calculated from 30 runs of the bootstrap simulated series on 3 cores.
 
 ```bash
 ./run_sed_threshold.sh -n 30 -c 3 -f example_config.txt
