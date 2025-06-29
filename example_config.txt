@@ -8,9 +8,9 @@ missingstring=NA
 
 # bootstrap simulation parameters
 ar_order=22
-in_sample_window_size=1000
+in_sample_window_size=400
 forecast_horizon=22
-forecast_length=500
+forecast_length=100
 random_seed=1234
 
 smoothing_bandwidth=0.05

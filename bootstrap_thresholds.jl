@@ -90,7 +90,7 @@ Simulate a bootstrap series using an AR(p) process fit to historical data.
 # Notes
 Draws standardized residuals with replacement and reconstructs the time series using AR recursion.
 """
-function simulate_ar_bootstrap(
+function simulate_ar_bootstrap(rng::AbstractRNG,
         ar_coefficients::Vector{Float64},
         residual_standard_deviation::Float64,
         residual_vector::Vector{Float64},
@@ -113,7 +113,7 @@ function simulate_ar_bootstrap(
     standardized_residuals = residual_vector ./ residual_standard_deviation  # length = in_sample_length
 
     # Draw (in_sample_length + burn_in_size) indices from 1..in_sample_length
-    bootstrap_indices = rand(1:in_sample_length, in_sample_length + burn_in_size)
+    bootstrap_indices = rand(rng, 1:in_sample_length, in_sample_length + burn_in_size)
     simulated_shocks = standardized_residuals[bootstrap_indices] .* residual_standard_deviation
 
     # AR recursion

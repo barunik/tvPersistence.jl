@@ -1,6 +1,6 @@
 include("bootstrap_thresholds.jl")
 
-function calculate_bootstrap_threshold_parallel(i,
+function calculate_bootstrap_threshold_parallel(rng::AbstractRNG, i,
         series::Vector{Float64},
         ar_order::Int,
         in_sample_window_size::Int,
@@ -26,11 +26,11 @@ function calculate_bootstrap_threshold_parallel(i,
     in_sample_effective_length = N - ar_order
 
     # Pre-generate seed-index list
-    seed_index_list = rand(1:in_sample_effective_length, ar_order)
+    seed_index_list = rand(rng, 1:in_sample_effective_length, ar_order)
 
         @info "Performing boostrap simulation number $i"
         # Simulate pseudo-series (no burn-in)
-        simulated_series = simulate_ar_bootstrap(
+        simulated_series = simulate_ar_bootstrap(rng,
             ar_coefficients,
             residual_sd,
             residual_vector,

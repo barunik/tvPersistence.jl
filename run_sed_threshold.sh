@@ -68,6 +68,8 @@ if [ ! -r "$CONFIG_FILE" ]; then
   exit 1
 fi
 
+random_seed=$(grep '^random_seed=' "$CONFIG_FILE" | cut -d= -f2 | tr -d '[:space:]')
+
 # run Julia—UNQUOTED heredoc so Bash expands $NUM_SIM, $NUM_CORES, $CONFIG_FILE
 julia --project=. <<JULIA
 using Pkg; Pkg.activate("."); Pkg.instantiate();
@@ -106,7 +108,6 @@ cutoff_idx          = parse(Int,    cfg["cutoff_start_index"]);
 benchmark_method    = Symbol(cfg["benchmark_method"]);
 comparison_method   = Symbol(cfg["comparison_method"]);
 forecast_length     = cfg["forecast_length"] == "Maximum" ? "Maximum" : parse(Int, cfg["forecast_length"]);
-random_seed         = parse(Int,    cfg["random_seed"]);
 tvp_kernel_width    = parse(Float64,cfg["tvp_kernel_width"]);
 kernel_type         = cfg["kernel_type"];
 max_ar_order        = parse(Int,    cfg["max_ar_order"]);
@@ -117,17 +118,16 @@ irf_kernel_width    = parse(Float64,cfg["irf_kernel_width"]);
 forecast_kernel_w   = parse(Float64,cfg["forecast_kernel_width"]);
 alpha_level         = parse(Float64,cfg["alpha_level"]);
 
-# set RNG seed in main process
-Random.seed!(random_seed)
-
 # launch workers and run parallel bootstrap
 addprocs(num_workers)
 @everywhere using Random, Statistics;
-@everywhere Random.seed!(random_seed)
 @everywhere include("bootstrap_thresholds.jl");
 @everywhere include("bootstrap_thresholds_parallel.jl");
 
-sed_vals = pmap(i -> calculate_bootstrap_threshold_parallel(
+
+rng_list = [MersenneTwister($random_seed + i) for i in 1:num_replicates]
+
+sed_vals = pmap(i -> calculate_bootstrap_threshold_parallel(rng_list[i],
     i, series,
     ar_order, in_sample_window, forecast_horizon,
     smoothing_bw,
