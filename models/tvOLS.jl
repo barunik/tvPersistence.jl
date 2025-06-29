@@ -3,12 +3,6 @@ module tvOLS_estimator
 using Pkg
 using LinearAlgebra, Statistics
 
-# Activate the project environment in the current directory (".")
-Pkg.activate(".")
-
-# Instantiate the environment, which installs exact versions of dependencies
-Pkg.instantiate()
-
 ############################################################################
 ## Time-varying OLS model estimation functionality ## --------------------
 ############################################################################

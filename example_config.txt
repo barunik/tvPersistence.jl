@@ -1,0 +1,34 @@
+# replicate example.jl pockets run
+
+# data preprocessing
+data_file=example_data.csv
+data_column=A 
+scale_multiplier=100.0
+missingstring=NA
+
+# bootstrap simulation parameters
+ar_order=22
+in_sample_window_size=1000
+forecast_horizon=22
+forecast_length=500
+random_seed=1234
+
+smoothing_bandwidth=0.05
+cutoff_start_index=100
+
+
+# model selection
+benchmark_method=HAR
+comparison_method=tvEWD
+
+# Model parameters
+tvp_kernel_width=0.4
+kernel_type=Gaussian
+max_ar_order=15
+jmax_scale=5
+ar_lag_for_trend=1
+tvp_constant_kernel_width=0.05
+irf_kernel_width=0.2
+forecast_kernel_width=0.5
+
+alpha_level=0.05

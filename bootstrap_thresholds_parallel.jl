@@ -1,199 +1,189 @@
-# bootstrap_thresholds_parallel.jl
+include("bootstrap_thresholds.jl")
 
-using Distributed
+function calculate_bootstrap_threshold_parallel(i,
+        series::Vector{Float64},
+        ar_order::Int,
+        in_sample_window_size::Int,
+        forecast_horizon::Int,
+        smoothing_bandwidth::Float64,
+        benchmark_method::Symbol,
+        comparison_method::Symbol;
+        forecast_length::Union{Int,String} = "Maximum",
+        tvp_kernel_width::Float64 = 0.4,
+        kernel_type::String = "Gaussian",
+        max_ar_order::Int = 1,
+        jmax_scale::Int = 7,
+        ar_lag_for_trend::Int = 1,
+        tvp_constant_kernel_width::Float64 = 0.1,
+        irf_kernel_width::Float64 = 0.2,
+        forecast_kernel_width::Float64 = 0.4
+    )::Vector{Float64}
 
- # Make sure we have exactly n_cores-1 workers every time we load this file:
-let
-    desired_workers = max(1, Sys.CPU_THREADS - 1)
-    current_workers = nprocs() - 1
-    if current_workers != desired_workers
-        rmprocs(workers())            # kill all existing
-        addprocs(desired_workers)     # start exactly one per core minus master
-    end
-end
+    N = length(series)
 
-@everywhere begin
-    # 2) bring in all the original helpers & models
-    using Random, Statistics
-    include("bootstrap_thresholds.jl")   # defines fit_ar_model, simulate_ar_bootstrap,
-                                         # compute_global_threshold, SED_smooth_one, forecasting functions, etc.
+    # Fit AR(ar_order)
+    ar_coefficients, residual_sd, residual_vector = fit_ar_model(series, ar_order)
+    in_sample_effective_length = N - ar_order
 
-    # 3) helper to route a symbol → forecast-error vector
-    function _forecast_errors(
-            series::Vector{Float64},
-            in_sample_window_size::Int,
-            fcast_len::Int,
-            forecast_horizon::Int,
-            method::Symbol,
-            ar_order::Int,
-            tvp_kernel_width::Float64,
-            kernel_type::String,
-            max_ar_order::Int,
-            jmax_scale::Int,
-            ar_lag_for_trend::Int,
-            tvp_constant_kernel_width::Float64,
-            irf_kernel_width::Float64,
-            forecast_kernel_width::Float64,
-            forecast_length::Union{Int,String}
-        )::Vector{Float64}
+    # Pre-generate seed-index list
+    seed_index_list = rand(1:in_sample_effective_length, ar_order)
 
-        if method == :ARp
-            _, _, errs = ARp_forecast(series, in_sample_window_size, fcast_len, forecast_horizon, ar_order)
-            return errs
+        @info "Performing boostrap simulation number $i"
+        # Simulate pseudo-series (no burn-in)
+        simulated_series = simulate_ar_bootstrap(
+            ar_coefficients,
+            residual_sd,
+            residual_vector,
+            series,
+            ar_order,
+            0,
+            seed_index_list
+        )
 
-        elseif method == :TVAR
-            _, _, errs = TVAR_forecast(
-                series, in_sample_window_size, fcast_len, forecast_horizon,
-                ar_order, tvp_kernel_width; kernel_type=kernel_type
-            )
-            return errs
+        L = length(simulated_series)
 
-        elseif method == :HAR
-            _, _, errs = HAR_forecast(series, in_sample_window_size, fcast_len, forecast_horizon)
-            return errs
-
-        elseif method == :TVHAR
-            _, _, errs = TVHAR_forecast(
-                series, in_sample_window_size, fcast_len, forecast_horizon,
-                tvp_kernel_width; kernel_type=kernel_type
-            )
-            return errs
-
-        elseif method == :tvEWD
-            _, _, errs = tvEWD_forecast(
-                series,
-                in_sample_window_size,
-                forecast_horizon,
-                max_ar_order,
-                ar_lag_for_trend,
-                jmax_scale,
-                tvp_constant_kernel_width,
-                irf_kernel_width,
-                forecast_kernel_width;
-                kernel_type=kernel_type,
-                forecast_window_size=forecast_length
-            )
-            return errs
-
+        # Determine fcast_len by user input or maximum
+        fcast_len = 0
+        if forecast_length === "Maximum"
+            # For each method, “maximum” means:
+            #   ARp, TVAR: L - in_sample_window_size - ar_order - (forecast_horizon - 1)
+            #   HAR, TVHAR: L - in_sample_window_size - (22 - 1) - (forecast_horizon - 1)
+            #   tvEWD: handled internally by passing "Maximum" to forecast_window_size
+            if benchmark_method == :tvEWD || comparison_method == :tvEWD
+                # We won't set fcast_len here; tvEWD_forecast_test_4 will handle
+                fcast_len = -1  # sentinel
+            else
+                if benchmark_method == :ARp || comparison_method == :ARp || 
+                   benchmark_method == :TVAR || comparison_method == :TVAR
+                    fcast_len = L - in_sample_window_size - ar_order - (forecast_horizon - 1)
+                elseif benchmark_method == :HAR || comparison_method == :HAR ||
+                       benchmark_method == :TVHAR || comparison_method == :TVHAR
+                    fcast_len = L - in_sample_window_size - (22 - 1) - (forecast_horizon - 1)
+                else
+                    # If neither is ARp, TVAR, HAR, TVHAR, default to minimal:
+                    fcast_len = L - in_sample_window_size - ar_order - (forecast_horizon - 1)
+                end
+            end
+        elseif isa(forecast_length, Int)
+            fcast_len = forecast_length
         else
-            error("Unsupported forecast method: $method")
+            error("`forecast_length` must be an Integer or \"Maximum\"")
         end
-    end
 
-    """
-        calculate_bootstrap_threshold(
-            series::Vector{Float64},
-            ar_order::Int,
-            in_sample_window_size::Int,
-            forecast_horizon::Int,
-            number_of_replicates::Int,
-            smoothing_bandwidth::Float64,
-            cutoff_start_index::Int,
-            benchmark_method::Symbol,
-            comparison_method::Symbol;
-            forecast_length::Union{Int,String} = "Maximum",
-            alpha_level::Float64 = 0.05,
-            random_seed::Int = 0,
-            tvp_kernel_width::Float64 = 0.4,
-            kernel_type::String = "Gaussian",
-            max_ar_order::Int = 15,
-            jmax_scale::Int = 7,
-            ar_lag_for_trend::Int = 1,
-            tvp_constant_kernel_width::Float64 = 0.1,
-            irf_kernel_width::Float64 = 0.2,
-            forecast_kernel_width::Float64 = 0.4
-        ) -> Float64
-
-    Exactly the same signature as before, but runs all B replicates in parallel
-    and then calls `compute_global_threshold` on the full collection.
-    """
-    function calculate_bootstrap_threshold_parallel(
-            series::Vector{Float64},
-            ar_order::Int,
-            in_sample_window_size::Int,
-            forecast_horizon::Int,
-            number_of_replicates::Int,
-            smoothing_bandwidth::Float64,
-            cutoff_start_index::Int,
-            benchmark_method::Symbol,
-            comparison_method::Symbol;
-            forecast_length::Union{Int,String} = "Maximum",
-            alpha_level::Float64 = 0.05,
-            random_seed::Int = 0,
-            tvp_kernel_width::Float64 = 0.4,
-            kernel_type::String = "Gaussian",
-            max_ar_order::Int = 15,
-            jmax_scale::Int = 7,
-            ar_lag_for_trend::Int = 1,
-            tvp_constant_kernel_width::Float64 = 0.1,
-            irf_kernel_width::Float64 = 0.2,
-            forecast_kernel_width::Float64 = 0.4
-        )::Float64
-
-        if random_seed != 0
-            # seed the master RNG
-            Random.seed!(random_seed)
-
-            # seed each worker to the same value
-            @sync for w in workers()
-                @async remotecall(Random.seed!, w, random_seed)
+        # Compute benchmark errors (using inline dispatch)
+        bench_errors = begin
+            if benchmark_method == :ARp
+                _, _, errs = ARp_forecast(simulated_series, in_sample_window_size, fcast_len, forecast_horizon, ar_order)
+                errs
+            elseif benchmark_method == :TVAR
+                _, _, errs = TVAR_forecast(
+                    simulated_series,
+                    in_sample_window_size,
+                    fcast_len,
+                    forecast_horizon,
+                    ar_order,
+                    tvp_kernel_width;
+                    kernel_type=kernel_type
+                )
+                errs
+            elseif benchmark_method == :HAR
+                _, _, errs = HAR_forecast(simulated_series, in_sample_window_size, fcast_len, forecast_horizon)
+                errs
+            elseif benchmark_method == :TVHAR
+                _, _, errs = TVHAR_forecast(
+                    simulated_series,
+                    in_sample_window_size,
+                    fcast_len,
+                    forecast_horizon,
+                    tvp_kernel_width;
+                    kernel_type=kernel_type
+                )
+                errs
+            elseif benchmark_method == :tvEWD
+                # Pass forecast_window_size = forecast_length (Int or "Maximum")
+                _, _, errs = tvEWD_forecast(
+                    simulated_series,
+                    in_sample_window_size,
+                    forecast_horizon,
+                    max_ar_order,
+                    ar_lag_for_trend,
+                    jmax_scale,
+                    tvp_constant_kernel_width,
+                    irf_kernel_width,
+                    forecast_kernel_width;
+                    kernel_type=kernel_type,
+                    forecast_window_size=forecast_length
+                )
+                errs
+            else
+                error("Unsupported benchmark_method: $benchmark_method")
             end
         end
 
-        # 1) fit the bootstrap AR(p) generator
-        N = length(series)
-        ar_coefs, resid_sd, resid_vec = fit_ar_model(series, ar_order)
-        in_sample_eff = N - ar_order
+        # Compute comparison errors
+        comp_errors = begin
+            if comparison_method == :ARp
+                _, _, errs = ARp_forecast(simulated_series, in_sample_window_size, fcast_len, forecast_horizon, ar_order)
+                errs
+            elseif comparison_method == :TVAR
+                _, _, errs = TVAR_forecast(
+                    simulated_series,
+                    in_sample_window_size,
+                    fcast_len,
+                    forecast_horizon,
+                    ar_order,
+                    tvp_kernel_width;
+                    kernel_type=kernel_type
+                )
+                errs
+            elseif comparison_method == :HAR
+                _, _, errs = HAR_forecast(simulated_series, in_sample_window_size, fcast_len, forecast_horizon)
+                errs
+            elseif comparison_method == :TVHAR
+                _, _, errs = TVHAR_forecast(
+                    simulated_series,
+                    in_sample_window_size,
+                    fcast_len,
+                    forecast_horizon,
+                    tvp_kernel_width;
+                    kernel_type=kernel_type
+                )
+                errs
+            elseif comparison_method == :tvEWD
+                _, _, errs = tvEWD_forecast(
+                    simulated_series,
+                    in_sample_window_size,
+                    forecast_horizon,
+                    max_ar_order,
+                    ar_lag_for_trend,
+                    jmax_scale,
+                    tvp_constant_kernel_width,
+                    irf_kernel_width,
+                    forecast_kernel_width;
+                    kernel_type=kernel_type,
+                    forecast_window_size=forecast_length
+                )
+                errs
+            else
+                error("Unsupported comparison_method: $comparison_method")
+            end
+        end
 
-        # 2) pre‐draw all "seed" vectors for reproducibility
-        seed_list = [ rand(1:in_sample_eff, ar_order) for _ in 1:number_of_replicates ]
+        # Truncate both error‐vectors to the same minimum length
+        min_len = min(length(bench_errors), length(comp_errors))
+        bench_trunc = bench_errors[1:min_len]
+        comp_trunc  = comp_errors[1:min_len]
 
-        @info "Dispatching $number_of_replicates replicates across $n_workers workers…"
+        # SED estimation
+        smoothed_sed = SED_smooth_one(
+            bench_trunc,
+            comp_trunc,
+            smoothing_bandwidth,
+            "one-sided"
+        )
 
-        # 3) map one replicate → one smoothed SED vector
-        sed_collection = pmap(seed -> begin
-            # simulate
-            sim = simulate_ar_bootstrap(
-                ar_coefs, resid_sd, resid_vec,
-                series, ar_order, 0, seed
-            )
-            L = length(sim)
+    @info "Bootstrap $i generated."
 
-            # compute forecast‐length fcast_len
-            fcast_len = forecast_length === "Maximum" ? (
-                (benchmark_method in (:tvEWD) || comparison_method in (:tvEWD)) ? -1 :
-                ((benchmark_method in (:ARp,:TVAR) || comparison_method in (:ARp,:TVAR)) ?
-                   L - in_sample_window_size - ar_order - (forecast_horizon - 1) :
-                ((benchmark_method in (:HAR,:TVHAR) || comparison_method in (:HAR,:TVHAR)) ?
-                   L - in_sample_window_size - 21           - (forecast_horizon - 1) :
-                   L - in_sample_window_size - ar_order      - (forecast_horizon - 1)))
-            ) : forecast_length
-
-            # benchmark vs comparison error series
-            bench_err = _forecast_errors(
-                sim, in_sample_window_size, fcast_len, forecast_horizon,
-                benchmark_method, ar_order, tvp_kernel_width, kernel_type,
-                max_ar_order, jmax_scale, ar_lag_for_trend,
-                tvp_constant_kernel_width, irf_kernel_width,
-                forecast_kernel_width, forecast_length
-            )
-
-            comp_err  = _forecast_errors(
-                sim, in_sample_window_size, fcast_len, forecast_horizon,
-                comparison_method, ar_order, tvp_kernel_width, kernel_type,
-                max_ar_order, jmax_scale, ar_lag_for_trend,
-                tvp_constant_kernel_width, irf_kernel_width,
-                forecast_kernel_width, forecast_length
-            )
-
-            # align lengths & smooth
-            m = min(length(bench_err), length(comp_err))
-            SED_smooth_one(bench_err[1:m], comp_err[1:m], smoothing_bandwidth, "one-sided")
-        end, seed_list)
-
-        @info "All replicates complete; computing global threshold…"
-        compute_global_threshold(sed_collection, cutoff_start_index, alpha_level)
-    end
-
-    export calculate_bootstrap_threshold
+    # Compute and return the single global threshold calculated as the 1-alpha quantile
+    return smoothed_sed
 end

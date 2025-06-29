@@ -3,7 +3,7 @@ using Pkg
 Pkg.activate(".")
 # Instantiate the environment, which installs exact versions of dependencies
 Pkg.instantiate()
-
+Pkg.add("Statistics")
 using CSV, DataFrames,GLM
 using Distributions, LinearAlgebra, Statistics
 using Plots, StatsBase, StatsPlots, Colors
@@ -214,3 +214,67 @@ display(tvEWD_vs_HAR_pockets)
 
 savefig("pockets_of_predictability_example.svg")
 
+# --------------------------------------------------------
+# parallelize_bootstrap.jl
+using Distributed
+rmprocs(workers())
+# Spin up, for example, 4 additional workers
+addprocs(3)
+
+# Load Random/Statistics and your helper file everywhere
+@everywhere begin
+  using Random, Statistics
+  include("bootstrap_thresholds_parallel.jl")
+  random_seed = 123    # defines calculate_bootstrap_threshold()
+end
+
+
+@everywhere if random_seed != 0
+    Random.seed!(random_seed + myid())   # or just `+ i` if you seed per replicate
+end
+
+# On the master, set up your “static” arguments:
+@everywhere begin
+    # Load example data
+    data_read=CSV.File("example_data.csv",missingstring=["NA"],header=true) |> DataFrame;
+
+    ############ Replication for TV-EWD forecast ##################
+    data0=100.0.*data_read.A[ismissing.(data_read.A).==false];
+    series               = data0
+    ar_order             = 5
+    in_sample_window_size= 1000
+    forecast_horizon     = 1
+    fcast_length = 500
+    number_of_replicates = 30
+    smoothing_bandwidth  = 0.4
+    cutoff_start_index   = in_sample_window_size + 1
+    benchmark_method     = :HAR
+    comparison_method    = :tvEWD
+end
+
+# any other keyword args you want to pass:
+@everywhere begin
+    kwargs = (
+        forecast_length = fcast_length,
+        random_seed     = 1234,
+        tvp_kernel_width= 0.4,
+        kernel_type     = "Gaussian",
+    )
+end
+# 4) pmap over i=1:B
+@info "Launching $number_of_replicates parallel bootstrap jobs…"
+sed_collection = pmap(i -> calculate_bootstrap_threshold_parallel(
+    i,
+    series,
+    ar_order,
+    in_sample_window_size,
+    forecast_horizon,
+    smoothing_bandwidth,
+    cutoff_start_index,
+    benchmark_method,
+    comparison_method;
+    kwargs...          # splat the keyword args
+), 1:number_of_replicates)
+
+
+compute_global_threshold(sed_collection, 100, 0.05)
