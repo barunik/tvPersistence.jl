@@ -119,7 +119,35 @@ Here we compare the TV-EWD forecasting approach with the benchmark HAR model thr
 
 Note this step is computationally expensive, and to replicate teh results from the paper one needs to use server with multiple cores, as we have used median of  496 stocks.
 
-The functions allowing to use multiple cores will be added to this package soon.
+The script `run_sed_threshold.sh` allows you to calculate the SED threshold using bootstrap simulations in parallel.
+
+##### Usage
+
+To run the script, open a terminal (e.g. Git Bash on Windows) and execute:
+
+```bash
+./run_sed_threshold.sh -n NUM_SIMULATIONS -c NUM_CORES -f CONFIG_FILE
+
+```
+
+##### Arguments:
+
+-n — number of bootstrap replications to perform
+
+-c — number of worker processes (cores) to use for parallel computation
+
+-f — path to a configuration file containing other required parameters
+
+##### Configuration File Format:
+
+The configuration file passed via -f is a plain text file with one key-value pair per line. Lines starting with # are comments. Example parameters set in file `example_config.txt`.
+
+##### Example:
+Example below prints a threshold of  0.0011691094423573072 into the terminal, calculated from 30 runs of the bootstrap simulated series on 3 cores.
+
+```bash
+./run_sed_threshold.sh -n 30 -c 3 -f example_config.txt
+```
 
 ```julia
 include("bootstrap_thresholds.jl") # file containing the function

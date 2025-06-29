@@ -117,9 +117,13 @@ irf_kernel_width    = parse(Float64,cfg["irf_kernel_width"]);
 forecast_kernel_w   = parse(Float64,cfg["forecast_kernel_width"]);
 alpha_level         = parse(Float64,cfg["alpha_level"]);
 
+# set RNG seed in main process
+Random.seed!(random_seed)
+
 # launch workers and run parallel bootstrap
 addprocs(num_workers)
 @everywhere using Random, Statistics;
+@everywhere Random.seed!(random_seed)
 @everywhere include("bootstrap_thresholds.jl");
 @everywhere include("bootstrap_thresholds_parallel.jl");
 
