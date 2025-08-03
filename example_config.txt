@@ -36,3 +36,5 @@ kernel_type_tvHAR=triweight
 kernel_type_tvAR=triweight
 
 alpha_level=0.05
+output_file=SED_threshold.txt
+verbose_output=true

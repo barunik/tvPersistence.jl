@@ -1,0 +1,37 @@
+========== SED Bootstrap Threshold Report ==========
+
+SED threshold: 4.2728393635608855e-6
+
+-----------------------------------------------------
+
+Run configuration:
+
+  Number of bootstrap replicates : 5
+  Number of parallel workers     : 5
+  Benchmark method               : HAR
+  Comparison method              : tvEWD
+  Data file                      : median_RV.csv
+  Data column                    : x1
+  AR order                       : 1
+  Max AR order                   : 1
+  Forecast horizon               : 1
+  Forecast length                : 100
+  In-sample window size          : 1000
+  Smoothing bandwidth            : 0.05
+  Cutoff start index             : 1
+  Alpha level                    : 0.05
+  TVP kernel width               : 0.4
+  Constant TVP kernel width      : 0.1
+  IRF kernel width               : 0.2
+  Forecast kernel width          : 0.5
+  Kernel type                    : triweight
+  Kernel type tvEWD              : triweight
+  Kernel type tvHAR              : triweight
+  Kernel type tvAR               : triweight
+  Smoothing kernel               : triweight
+  Jmax scale                     : 5
+  AR lag for trend               : 1
+  Random seed                    : 1234
+
+=====================================================
+

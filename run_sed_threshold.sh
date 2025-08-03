@@ -69,6 +69,7 @@ if [ ! -r "$CONFIG_FILE" ]; then
 fi
 
 random_seed=$(grep '^random_seed=' "$CONFIG_FILE" | cut -d= -f2 | tr -d '[:space:]')
+output_file=$(grep '^output_file=' "$CONFIG_FILE" | cut -d= -f2- | tr -d '[:space:]')
 
 # run Julia—UNQUOTED heredoc so Bash expands $NUM_SIM, $NUM_CORES, $CONFIG_FILE
 julia --project=. <<JULIA
@@ -78,6 +79,7 @@ using CSV, DataFrames, Distributed, Random, Statistics;
 const num_replicates = $NUM_SIM;
 const num_workers    = $NUM_CORES;
 const config_file    = raw"$CONFIG_FILE";
+const output_file = raw"$output_file";
 
 # read config
 cfg = Dict{String,String}();
@@ -120,13 +122,18 @@ kernel_type_tvHAR   = cfg["kernel_type_tvHAR"];
 kernel_type_tvAR    = cfg["kernel_type_tvAR"];
 smoothing_kernel    = cfg["smoothing_kernel"];
 alpha_level         = parse(Float64,cfg["alpha_level"]);
+verbose_output = haskey(cfg, "verbose_output") && lowercase(cfg["verbose_output"]) == "true"
+
 
 # launch workers and run parallel bootstrap
 addprocs(num_workers)
 @everywhere using Random, Statistics;
 @everywhere include("bootstrap_thresholds.jl");
+@everywhere base_seed = $random_seed
 
-sed_vals = pmap(i -> calculate_bootstrap_threshold_parallel_V2(
+# re-seed before every function run to ensure replicability under non-deterministic task schedule
+sed_vals = pmap(i -> begin Random.seed!(base_seed + i)
+ calculate_bootstrap_threshold_parallel_V2(
     i, series,
     ar_order, in_sample_window, forecast_horizon,
     smoothing_bw,
@@ -143,11 +150,59 @@ sed_vals = pmap(i -> calculate_bootstrap_threshold_parallel_V2(
     tvp_constant_kernel_width = tvp_const_bw,
     irf_kernel_width       = irf_kernel_width,
     forecast_kernel_width  = forecast_kernel_w
-), 1:num_replicates);
+) end, 1:num_replicates);
 
 # compute and print final threshold
 thr = compute_global_threshold(sed_vals, cutoff_idx, alpha_level);
 println("SED threshold: ", thr)
+
+if verbose_output
+    report_lines = [
+        "========== SED Bootstrap Threshold Report ==========\n",
+        "SED threshold: \$thr\n",
+        "-----------------------------------------------------\n",
+        "Run configuration:\n",
+        "  Number of bootstrap replicates : \$num_replicates",
+        "  Number of parallel workers     : \$num_workers",
+        "  Benchmark method               : \$(string(benchmark_method))",
+        "  Comparison method              : \$(string(comparison_method))",
+        "  Data file                      : \$data_file",
+        "  Data column                    : \$col",
+        "  AR order                       : \$ar_order",
+        "  Max AR order                   : \$max_ar_order",
+        "  Forecast horizon               : \$forecast_horizon",
+        "  Forecast length                : \$(forecast_length)",
+        "  In-sample window size          : \$in_sample_window",
+        "  Smoothing bandwidth            : \$smoothing_bw",
+        "  Cutoff start index             : \$cutoff_idx",
+        "  Alpha level                    : \$alpha_level",
+        "  TVP kernel width               : \$tvp_kernel_width",
+        "  Constant TVP kernel width      : \$tvp_const_bw",
+        "  IRF kernel width               : \$irf_kernel_width",
+        "  Forecast kernel width          : \$forecast_kernel_w",
+        "  Kernel type                    : \$kernel_type",
+        "  Kernel type tvEWD              : \$kernel_type_tvEWD",
+        "  Kernel type tvHAR              : \$kernel_type_tvHAR",
+        "  Kernel type tvAR               : \$kernel_type_tvAR",
+        "  Smoothing kernel               : \$smoothing_kernel",
+        "  Jmax scale                     : \$jmax_scale",
+        "  AR lag for trend               : \$ar_lag_for_trend",
+        "  Random seed                    : $random_seed",
+        "\n=====================================================\n"
+    ]
+
+    open(output_file, "w") do io
+        for line in report_lines
+            println(io, line)
+        end
+    end
+else
+    # Just write the threshold as plain output
+    open(output_file, "w") do io
+        write(io, "SED threshold: \$thr\n")
+    end
+end
+
 
 # Shutdown all active workers
 rmprocs(workers())
