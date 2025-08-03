@@ -131,7 +131,7 @@ addprocs(num_workers)
 @everywhere include("bootstrap_thresholds.jl");
 @everywhere base_seed = $random_seed
 
-# re-seed before every function run to ensure replicability under non-deterministic task schedule
+# re-seed before every function run to ensure replicability under non-deterministic task schedule-"!
 sed_vals = pmap(i -> begin Random.seed!(base_seed + i)
  calculate_bootstrap_threshold_parallel_V2(
     i, series,

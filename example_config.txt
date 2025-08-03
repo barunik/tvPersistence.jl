@@ -10,11 +10,11 @@ missingstring=NA
 ar_order=1
 in_sample_window_size=1000
 forecast_horizon=1
-forecast_length=100
+forecast_length=2130
 random_seed=1234
 
 smoothing_bandwidth=0.05
-cutoff_start_index=1
+cutoff_start_index=100
 
 
 # model selection

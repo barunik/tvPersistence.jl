@@ -1,12 +1,12 @@
 ========== SED Bootstrap Threshold Report ==========
 
-SED threshold: 4.2728393635608855e-6
+SED threshold: -8.547993358658154e-6
 
 -----------------------------------------------------
 
 Run configuration:
 
-  Number of bootstrap replicates : 5
+  Number of bootstrap replicates : 10
   Number of parallel workers     : 5
   Benchmark method               : HAR
   Comparison method              : tvEWD
@@ -15,10 +15,10 @@ Run configuration:
   AR order                       : 1
   Max AR order                   : 1
   Forecast horizon               : 1
-  Forecast length                : 100
+  Forecast length                : 2130
   In-sample window size          : 1000
   Smoothing bandwidth            : 0.05
-  Cutoff start index             : 1
+  Cutoff start index             : 100
   Alpha level                    : 0.05
   TVP kernel width               : 0.4
   Constant TVP kernel width      : 0.1
