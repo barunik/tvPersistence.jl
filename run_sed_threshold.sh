@@ -72,16 +72,15 @@ random_seed=$(grep '^random_seed=' "$CONFIG_FILE" | cut -d= -f2 | tr -d '[:space
 
 # run Julia—UNQUOTED heredoc so Bash expands $NUM_SIM, $NUM_CORES, $CONFIG_FILE
 julia --project=. <<JULIA
-using Pkg; Pkg.activate("."); Pkg.instantiate();
 using CSV, DataFrames, Distributed, Random, Statistics;
 
 # embed Bash variables directly
-const num_replicates = $NUM_SIM
-const num_workers    = $NUM_CORES
-const config_file    = raw"$CONFIG_FILE"
+const num_replicates = $NUM_SIM;
+const num_workers    = $NUM_CORES;
+const config_file    = raw"$CONFIG_FILE";
 
 # read config
-cfg = Dict{String,String}()
+cfg = Dict{String,String}();
 for line in eachline(config_file)
     l = strip(line)
     if isempty(l) || startswith(l, "#")
@@ -89,15 +88,15 @@ for line in eachline(config_file)
     end
     k, v = split(l, "=", limit=2)
     cfg[strip(k)] = strip(v)
-end
+end;
 
 # load & preprocess
 data_file       = cfg["data_file"];
 col             = cfg["data_column"];
-scale           = parse(Float64, cfg["scale_multiplier"]);
+scale_multiplier= parse(Float64, cfg["scale_multiplier"]);
 missingstr      = cfg["missingstring"];
 df              = CSV.File(data_file, missingstring=[missingstr], header=true) |> DataFrame;
-series          = scale .* Float64.(df[.!ismissing.(getproperty(df, Symbol(col))), Symbol(col)]);
+series          = scale_multiplier .* Float64.(df[.!ismissing.(getproperty(df, Symbol(col))), Symbol(col)]);
 
 # assign all required arguments
 ar_order            = parse(Int,    cfg["ar_order"]);
@@ -116,25 +115,28 @@ ar_lag_for_trend    = parse(Int,    cfg["ar_lag_for_trend"]);
 tvp_const_bw        = parse(Float64,cfg["tvp_constant_kernel_width"]);
 irf_kernel_width    = parse(Float64,cfg["irf_kernel_width"]);
 forecast_kernel_w   = parse(Float64,cfg["forecast_kernel_width"]);
+kernel_type_tvEWD   = cfg["kernel_type_tvEWD"];
+kernel_type_tvHAR   = cfg["kernel_type_tvHAR"];
+kernel_type_tvAR    = cfg["kernel_type_tvAR"];
+smoothing_kernel    = cfg["smoothing_kernel"];
 alpha_level         = parse(Float64,cfg["alpha_level"]);
 
 # launch workers and run parallel bootstrap
 addprocs(num_workers)
 @everywhere using Random, Statistics;
 @everywhere include("bootstrap_thresholds.jl");
-@everywhere include("bootstrap_thresholds_parallel.jl");
 
-
-rng_list = [MersenneTwister($random_seed + i) for i in 1:num_replicates]
-
-sed_vals = pmap(i -> calculate_bootstrap_threshold_parallel(rng_list[i],
+sed_vals = pmap(i -> calculate_bootstrap_threshold_parallel_V2(
     i, series,
     ar_order, in_sample_window, forecast_horizon,
     smoothing_bw,
     benchmark_method, comparison_method;
-    forecast_length        = forecast_length,
+    fcast_len              = forecast_length,
     tvp_kernel_width       = tvp_kernel_width,
-    kernel_type            = kernel_type,
+    kernel_type_tvEWD      = kernel_type_tvEWD,
+    kernel_type_tvHAR     = kernel_type_tvHAR,
+    kernel_type_tvAR       = kernel_type_tvAR,
+    smoothing_kernel       = smoothing_kernel,
     max_ar_order           = max_ar_order,
     jmax_scale             = jmax_scale,
     ar_lag_for_trend       = ar_lag_for_trend,
@@ -146,4 +148,7 @@ sed_vals = pmap(i -> calculate_bootstrap_threshold_parallel(rng_list[i],
 # compute and print final threshold
 thr = compute_global_threshold(sed_vals, cutoff_idx, alpha_level);
 println("SED threshold: ", thr)
+
+# Shutdown all active workers
+rmprocs(workers())
 JULIA

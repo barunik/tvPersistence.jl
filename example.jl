@@ -168,8 +168,8 @@ include("bootstrap_thresholds.jl")
 ar_order = 1
 in_sample_window = 1000
 forecast_horizon = 1
-num_replicates = 100
-smoothing_bw = 0.0176
+num_replicates = 10
+smoothing_bw = 0.05
 cutoff_start = 100
 forecast_length = fcast_length
 
@@ -193,12 +193,12 @@ threshold = calculate_bootstrap_threshold(
     comp;
     forecast_length,
     random_seed = 0,
-    tvp_kernel_width = 0.4,
+    tvp_kernel_width = 0.3,
     kernel_type = "Gaussian",
     max_ar_order = 2,
     jmax_scale = 5,
     ar_lag_for_trend = 1,
-    tvp_constant_kernel_width = 0.05,
+    tvp_constant_kernel_width = 0.1,
     irf_kernel_width = 0.2,
     forecast_kernel_width = 0.5
 )

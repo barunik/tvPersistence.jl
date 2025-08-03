@@ -199,6 +199,77 @@ function HAR_forecast(
     return forecasts, realized, errors
 end
 
+function HAR_forecast_legacy(data0,tt,fcast_length,horizon)
+
+    T=length(data0)
+    muR=mean(data0)
+    chronR=data0.-muR
+    r=reverse(chronR);
+
+    RVh = zeros(length(r)-horizon+1,1);
+        for i=1:length(RVh)
+            RVh[i]=mean(r[i:i+horizon-1])
+        end
+
+    RVd = r[1:end-22];
+    RVw = zeros(length(RVd));
+    for i=1:length(RVd)
+       RVw[i]= (r[i]+r[i+1]+r[i+2]+r[i+3]+r[i+4])/5;
+    end
+
+    RVm = zeros(length(RVd));
+    for i=1:length(RVd) 
+       temp=0;
+       for h=0:21
+           temp = temp + r[i+h];
+       end
+       RVm[i]= temp./22;
+    end
+
+    horizon_forecast_corsi=zeros(fcast_length);
+    daily_onestep=zeros(fcast_length,horizon);
+    const_HAR=zeros(fcast_length,horizon);
+
+    Error_HAR=zeros(fcast_length);
+
+    for ii=0:(fcast_length-1)
+
+        RVd_estim = RVd[fcast_length+horizon-ii: fcast_length + tt+horizon-1-ii];  #is the moving window of TT obs, moves towards RVd(0)
+        RVw_estim = RVw[fcast_length+horizon-ii: fcast_length + tt+horizon-1-ii];
+        RVm_estim = RVm[fcast_length+horizon-ii: fcast_length + tt+horizon-1-ii];
+
+        Rmat = [ones(length(RVd_estim)-1) RVd_estim[2:end] RVw_estim[2:end] RVm_estim[2:end]]
+        betaHAR=tvOLS_estimator.OLSestimator(RVd_estim[1:end-1],Rmat)
+
+        #One-step ahead out of sample forecast, forecasts RVd(fcast_length+4)
+        daily_onestep[ii+1,1]= betaHAR[1] + betaHAR[2]*RVd_estim[1] + betaHAR[3]*RVw_estim[1] + betaHAR[4]*RVm_estim[1]; 
+
+        if horizon >=2
+            for p=2:min(5,horizon)
+                daily_onestep[ii+1,p]= betaHAR[1] + betaHAR[2]*daily_onestep[ii+1,p-1] + betaHAR[3]*0.2*(sum(daily_onestep[ii+1,1:p-1])+sum(RVd_estim[1:5-p+1])) + betaHAR[4]*(1/22)*(sum(daily_onestep[ii+1,1:p-1])+ sum(RVd_estim[1:22-p+1]));
+            end
+        end
+
+        if horizon >= 6
+            for p=6:min(22,horizon)
+                daily_onestep[ii+1,p]= betaHAR[1] + betaHAR[2]*daily_onestep[ii+1,p-1] + betaHAR[3]*0.2*(sum(daily_onestep[ii+1,p-5:p-1])) + betaHAR[4]*(1/22)*(sum(daily_onestep[ii+1,1:p-1])+ sum(RVd_estim[1:22-p+1]));
+            end
+        end
+
+        if horizon>= 23
+            for p=23:horizon
+                daily_onestep[ii+1,p]= betaHAR[1] + betaHAR[2]*daily_onestep[ii+1,p-1] + betaHAR[3]*0.2*(sum(daily_onestep[ii+1,p-5:p-1])) + betaHAR[4]*(1/22)*(sum(daily_onestep[ii+1,p-22:p-1]));
+            end
+        end
+
+        horizon_forecast_corsi[ii+1] = horizon^(-1)*sum(daily_onestep[(ii+1),:]); 
+        Error_HAR[ii+1]=(horizon_forecast_corsi[ii+1]-RVh[fcast_length-ii])
+        const_HAR[ii+1]=betaHAR[1]
+        
+    end
+    return (horizon_forecast_corsi,Error_HAR,const_HAR)
+end
+
 # Time-Varying HAR (TV-HAR)
 """
     TVHAR_forecast(data0::Vector, tt::Int, fcast_length::Int, horizon::Int,

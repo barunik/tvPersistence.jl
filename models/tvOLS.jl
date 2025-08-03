@@ -8,9 +8,58 @@ using LinearAlgebra, Statistics
 ############################################################################
 
 # Standard OLS estimation
-function OLSestimator(y,x)
-    return (transpose(x)*x) \ (transpose(x)*y)
+# Standard OLS estimation with detailed checks
+function OLSestimator(y, x)
+    # 1. Check for NaNs in y
+    if any(isnan, y)
+        error("Target vector y contains NaN values.")
+    end
+
+    # 2. Check for Infs in y
+    if any(isinf, y)
+        error("Target vector y contains Inf values.")
+    end
+
+    # 3. Check for NaNs in x
+    if any(isnan, x)
+        error("Design matrix x contains NaN values.")
+    end
+
+    # 4. Check for Infs in x
+    if any(isinf, x)
+        error("Design matrix x contains Inf values.")
+    end
+
+    # Compute intermediate product A = transpose(x)*x
+    A = transpose(x) * x
+
+    # 5. Check for NaNs in transpose(x) * x
+    if any(isnan, A)
+        error("Matrix transpose(x) * x contains NaN values.")
+    end
+
+    # 6. Check for Infs in transpose(x) * x
+    if any(isinf, A)
+        error("Matrix transpose(x) * x contains Inf values.")
+    end
+
+    # Compute intermediate product b = transpose(x)*y
+    b = transpose(x) * y
+
+    # 7. Check for NaNs in transpose(x) * y
+    if any(isnan, b)
+        error("Matrix transpose(x) * y contains NaN values.")
+    end
+
+    # 8. Check for Infs in transpose(x) * y
+    if any(isinf, b)
+        error("Matrix transpose(x) * y contains Inf values.")
+    end
+
+    # Return OLS estimate
+    return A \ b
 end
+
 
 """
     kernel(t::Vector{Float64}, bw::Float64, tkernel::String) -> Vector{Float64}
@@ -37,6 +86,8 @@ function kernel(t, bw, tkernel)
         return max.(0, 0.75 * (1 .- z.^2))
     elseif tkernel == "one-sided"
         return (z.<=0).*exp.(-0.5 * z.^2)
+    elseif tkernel == "triweight"
+        return 35/22 * (1 .-z.^2).^3
     else
         error("Unknown kernel type")
     end

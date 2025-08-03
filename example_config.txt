@@ -1,20 +1,20 @@
 # replicate example.jl pockets run
 
 # data preprocessing
-data_file=example_data.csv
-data_column=A 
-scale_multiplier=100.0
+data_file=median_RV.csv
+data_column=x1
+scale_multiplier=1
 missingstring=NA
 
 # bootstrap simulation parameters
-ar_order=22
-in_sample_window_size=400
-forecast_horizon=22
+ar_order=1
+in_sample_window_size=1000
+forecast_horizon=1
 forecast_length=100
 random_seed=1234
 
 smoothing_bandwidth=0.05
-cutoff_start_index=100
+cutoff_start_index=1
 
 
 # model selection
@@ -23,12 +23,16 @@ comparison_method=tvEWD
 
 # Model parameters
 tvp_kernel_width=0.4
-kernel_type=Gaussian
-max_ar_order=15
+kernel_type=triweight
+max_ar_order=1
 jmax_scale=5
 ar_lag_for_trend=1
-tvp_constant_kernel_width=0.05
+tvp_constant_kernel_width=0.1
 irf_kernel_width=0.2
 forecast_kernel_width=0.5
+smoothing_kernel=triweight
+kernel_type_tvEWD=triweight
+kernel_type_tvHAR=triweight
+kernel_type_tvAR=triweight
 
 alpha_level=0.05
