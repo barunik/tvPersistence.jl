@@ -9,6 +9,11 @@ using LinearAlgebra, Statistics
 
 # Standard OLS estimation
 # Standard OLS estimation with detailed checks
+function replace_infs_and_nans_with_zeros(matrix)
+    matrix[isinf.(matrix) .| isnan.(matrix)] .= 0
+    return matrix
+end
+
 function OLSestimator(y, x)
     # 1. Check for NaNs in y
     if any(isnan, y)
@@ -57,7 +62,7 @@ function OLSestimator(y, x)
     end
 
     # Return OLS estimate
-    return A \ b
+    return replace_infs_and_nans_with_zeros(A \ b)
 end
 
 
