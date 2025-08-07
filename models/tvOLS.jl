@@ -14,16 +14,9 @@ function replace_infs_and_nans_with_zeros(matrix)
     return matrix
 end
 
+# Standard OLS estimator
 function OLSestimator(y, x)
-
-    # Compute intermediate product A = transpose(x)*x
-    A = transpose(x) * x
-
-    # Compute intermediate product b = transpose(x)*y
-    b = transpose(x) * y
-
-    # Return OLS estimate
-    return replace_infs_and_nans_with_zeros(A \ b)
+    return replace_infs_and_nans_with_zeros((transpose(x)*x)) \ (transpose(x)*y)
 end
 
 
