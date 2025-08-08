@@ -118,7 +118,7 @@ function generate_AR_bootstrap_series(series, residuals, AR_coefficients, AR_ord
     # Calculate simulated values through the AR(p) formula
     for period = AR_order+1:T+burn_in_size
         lagged_values = [1;[simulated_series[period - k] for k in 1:AR_order]...] # append 1 for intercept
-        simulated_series[period] = dot(lagged_values, AR_coefficients) + sampled_errors[period]
+        simulated_series[period - 1] = dot(lagged_values, AR_coefficients) + sampled_errors[period]
     end
 
     return(simulated_series)
