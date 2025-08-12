@@ -33,7 +33,7 @@ This function computes the time-varying multiscale impulse response coefficients
 - `kernel_type_for_const::String`: Type of kernel used for trend estimation (default: `"Gaussian"`).
 - `kernel_type_for_IRF::String`: Type of kernel used in IRF estimation (default: `"Gaussian"`).
 
-- kernel type options: "Gaussian", "Epanechnikov", "one-sided"
+- kernel type options: "Gaussian", "Epanechnikov", "one-sided", "triweight"
 
 # Returns
 - `IRF_beta_scales_matrix::Matrix{Float64}`: A matrix of dimensions `(T - maxAR, JMAX)`, where each row corresponds to time `t` and each column to scale `j`. Each entry contains the first element of the scale-specific impulse response function value.

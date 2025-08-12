@@ -54,7 +54,7 @@ using a local‐regression (tvOLS) smoother.
 function SED_smooth_one(benchmark_forecast_error,# Vector of benchmark model forecast errors
         model_forecast_error, # Vector of new model forecast errors
         kernel_width,
-        kernel_type::String = "one-sided",
+        kernel_type::String = "triweight",
         include_intercept::Bool = true)
     data = benchmark_forecast_error.^2 .- model_forecast_error.^2; # Squared Error Difference as the dependent variable
     

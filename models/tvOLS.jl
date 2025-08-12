@@ -3,20 +3,21 @@ module tvOLS_estimator
 using Pkg
 using LinearAlgebra, Statistics
 
-# Activate the project environment in the current directory (".")
-Pkg.activate(".")
-
-# Instantiate the environment, which installs exact versions of dependencies
-Pkg.instantiate()
-
 ############################################################################
 ## Time-varying OLS model estimation functionality ## --------------------
 ############################################################################
 
 # Standard OLS estimation
-function OLSestimator(y,x)
-    return (transpose(x)*x) \ (transpose(x)*y)
+function replace_infs_and_nans_with_zeros(matrix)
+    matrix[isinf.(matrix) .| isnan.(matrix)] .= 0
+    return matrix
 end
+
+# Standard OLS estimator
+function OLSestimator(y, x)
+    return replace_infs_and_nans_with_zeros((transpose(x)*x)) \ (transpose(x)*y)
+end
+
 
 """
     kernel(t::Vector{Float64}, bw::Float64, tkernel::String) -> Vector{Float64}
@@ -32,7 +33,7 @@ Compute kernel weights based on the specified kernel type and bandwidth.
 - `Vector{Float64}`: A vector of kernel weights corresponding to the input distances `t`, with weights adjusted by the specified bandwidth and kernel type.
 
 # Purpose
-The kernel function computes the weights for each point based on its distance from a target point using a specified kernel type. This is used in local weighted regression to provide the weighting rule based on distance from the period of interest.
+The kernel function computes the weights for each point based on its distance from a target point using a specified kernel type. This is used in local linear regression to provide the weighting rule based on distance from the period of interest.
 """
 
 function kernel(t, bw, tkernel)
@@ -43,6 +44,8 @@ function kernel(t, bw, tkernel)
         return max.(0, 0.75 * (1 .- z.^2))
     elseif tkernel == "one-sided"
         return (z.<=0).*exp.(-0.5 * z.^2)
+    elseif tkernel == "triweight"
+        return 35/22 * (1 .-z.^2).^3
     else
         error("Unknown kernel type")
     end
@@ -52,13 +55,13 @@ end
 """
     tvOLS(x::Matrix{Float64}, y::Vector{Float64}, bw::Float64; tkernel::String = "Gaussian") -> NamedTuple
 
-Estimate time-varying OLS regression coefficients using local linear regression.
+Estimate time-varying OLS regression coefficients using local linear method.
 
 # Arguments
 - `x::Matrix{Float64}`: A matrix of size `(n, p)`, where `n` is the number of observations and `p` is the number of predictor variables. Each row corresponds to an observation, and each column corresponds to a predictor variable.
 - `y::Vector{Float64}`: A vector of length `n` containing the response variable.
 - `bw::Float64`: The bandwidth parameter ( h ) that determines the width of the kernel function.
-- `tkernel::String`: The type of kernel function to use. Options include `"Gaussian"` and `"Epanechnikov"`. Default is `"Gaussian"`.
+- `tkernel::String`: The type of kernel function to use. Options include `"Gaussian"`, `"Epanechnikov"`, `"one-sided"`, and `"triweight"`. Default is `"Gaussian"`.
 
 # Returns
 - `NamedTuple`: A tuple containing:

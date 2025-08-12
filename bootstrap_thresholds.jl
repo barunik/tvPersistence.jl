@@ -63,7 +63,7 @@ end
 
 # Bootstrap-simulate AR(p) pseudo-series
 """
-    simulate_ar_bootstrap(
+    generate_AR_bootstrap_series(
         ar_coefficients::Vector{Float64},
         residual_standard_deviation::Float64,
         residual_vector::Vector{Float64},
@@ -90,44 +90,39 @@ Simulate a bootstrap series using an AR(p) process fit to historical data.
 # Notes
 Draws standardized residuals with replacement and reconstructs the time series using AR recursion.
 """
-function simulate_ar_bootstrap(
-        ar_coefficients::Vector{Float64},
-        residual_standard_deviation::Float64,
-        residual_vector::Vector{Float64},
-        historical_series::Vector{Float64},
-        ar_order::Int,
-        burn_in_size::Int,
-        seed_index_vector::Vector{Int}
-    )
-    N = length(historical_series)
-    in_sample_length = N - ar_order
-    simulated_length = N + burn_in_size
-    simulated_series = zeros(simulated_length)
+function generate_AR_bootstrap_series(series, residuals, AR_coefficients, AR_order, burn_in_size = 0)
+    # AR_order and size of AR_coefficients has to match
+    # AR coefficients have to be ordered from the most recent lag to the most distant (not reversed!) + intercept first
+    # burn_in_size refers to what?
+    # length of series and residuals has to match!
+    # Should we handle RNG within or outside the function? -> outside, because Random.seed!() works globally regardless?
+    # Residuals are non-standardized!!
 
-    # Place the ar_order “seed” values
-    for k in 1:ar_order
-        simulated_series[k] = historical_series[ seed_index_vector[k] ]
+    # Check AR order and AR coefficient length match properly
+    if (length(AR_coefficients) - 1) != AR_order
+        throw(error("number of AR coefficients and AR_order must match"))
+    end
+    
+    T = length(series)
+
+    #if T != length(residuals)
+    #    @warn "the length of residuals and input series differ"
+    #end
+
+    # Initialize a container for the simulated series
+    simulated_series = vcat(series[rand(1:T, AR_order)], zeros(T-AR_order + burn_in_size))
+
+    # Randomly resample residuals with replacement
+    sampled_errors = rand(residuals, T + burn_in_size)
+
+    # Calculate simulated values through the AR(p) formula
+    for period = AR_order+1:T+burn_in_size
+        lagged_values = [1;[simulated_series[period - k] for k in 1:AR_order]...] # append 1 for intercept
+        simulated_series[period - 1] = dot(lagged_values, AR_coefficients) + sampled_errors[period]
     end
 
-    # Standardize residuals
-    standardized_residuals = residual_vector ./ residual_standard_deviation  # length = in_sample_length
-
-    # Draw (in_sample_length + burn_in_size) indices from 1..in_sample_length
-    bootstrap_indices = rand(1:in_sample_length, in_sample_length + burn_in_size)
-    simulated_shocks = standardized_residuals[bootstrap_indices] .* residual_standard_deviation
-
-    # AR recursion
-    for t in (ar_order + 1):(N + burn_in_size)
-        predictor_vector = [1.0]
-        for lag_k in 1:ar_order
-            push!(predictor_vector, simulated_series[t - lag_k])
-        end
-        predicted_mean = dot(predictor_vector, ar_coefficients)
-        shock_index = t - ar_order
-        simulated_series[t] = predicted_mean + simulated_shocks[shock_index]
-    end
-
-    return simulated_series
+    return(simulated_series)
+    
 end
 
 # Compute one-sided TV-OLS cutoff (same as before)
@@ -331,7 +326,7 @@ function calculate_bootstrap_threshold(
                 )
                 errs
             elseif benchmark_method == :HAR
-                _, _, errs = HAR_forecast(simulated_series, in_sample_window_size, fcast_len, forecast_horizon)
+                _, _, errs = HAR_forecast_legacy(simulated_series, in_sample_window_size, fcast_len, forecast_horizon)
                 errs
             elseif benchmark_method == :TVHAR
                 _, _, errs = TVHAR_forecast(
@@ -423,7 +418,7 @@ function calculate_bootstrap_threshold(
             bench_trunc,
             comp_trunc,
             smoothing_bandwidth,
-            "one-sided"
+            "triweight"
         )
         
     end
@@ -432,4 +427,157 @@ function calculate_bootstrap_threshold(
 
     # Compute and return the single global threshold calculated as the 1-alpha quantile
     return compute_global_threshold(smoothed_sed_collection, cutoff_start_index, alpha_level)
+end
+
+# Bootstrap SED threshold calculations function
+
+function calculate_bootstrap_threshold_parallel_V2(i,
+        series::Vector{Float64},
+        ar_order::Int,
+        in_sample_window_size::Int,
+        forecast_horizon::Int,
+        smoothing_bandwidth::Float64,
+        benchmark_method::Symbol,
+        comparison_method::Symbol;
+        fcast_len::Int,
+        tvp_kernel_width::Float64 = 0.4,
+        smoothing_kernel::String = "triweight",
+        kernel_type_tvEWD::String = "Gaussian",
+        kernel_type_tvHAR::String = "Gaussian",
+        kernel_type_tvAR::String = "Gaussian",
+        max_ar_order::Int = 1,
+        jmax_scale::Int = 7,
+        ar_lag_for_trend::Int = 1,
+        tvp_constant_kernel_width::Float64 = 0.1,
+        irf_kernel_width::Float64 = 0.2,
+        forecast_kernel_width::Float64 = 0.4,
+    )
+
+    SED_list = []
+    # Fit AR(ar_order)
+    ar_coefficients, _, residual_vector = fit_ar_model(series, ar_order)
+    #for i = 1:num_simulations
+
+        @info "Performing boostrap simulation number $i"
+        # Simulate pseudo-series (no burn-in)
+        simulated_series = generate_AR_bootstrap_series(series,
+            residual_vector,
+            ar_coefficients,
+            ar_order,
+        )
+
+        L = length(simulated_series)
+
+        # Compute benchmark errors (using inline dispatch)
+        bench_errors = begin
+            if benchmark_method == :ARp
+                _, _, errs = ARp_forecast(simulated_series, in_sample_window_size, fcast_len, forecast_horizon, ar_order)
+                errs
+            elseif benchmark_method == :TVAR
+                _, _, errs = TVAR_forecast(
+                    simulated_series,
+                    in_sample_window_size,
+                    fcast_len,
+                    forecast_horizon,
+                    ar_order,
+                    tvp_kernel_width;
+                    kernel_type=kernel_type_tvAR
+                )
+                errs
+            elseif benchmark_method == :HAR
+                _, errs = HAR_forecast_legacy(simulated_series, in_sample_window_size, fcast_len, forecast_horizon)
+                errs
+            elseif benchmark_method == :TVHAR
+                _, _, errs = TVHAR_forecast(
+                    simulated_series,
+                    in_sample_window_size,
+                    fcast_len,
+                    forecast_horizon,
+                    tvp_kernel_width;
+                    kernel_type=kernel_type_tvHAR
+                )
+                errs
+            elseif benchmark_method == :tvEWD
+                # Pass forecast_window_size = forecast_length (Int or "Maximum")
+                _, _, errs = tvEWD_forecast(
+                    simulated_series,
+                    in_sample_window_size,
+                    forecast_horizon,
+                    max_ar_order,
+                    ar_lag_for_trend,
+                    jmax_scale,
+                    tvp_constant_kernel_width,
+                    irf_kernel_width,
+                    forecast_kernel_width;
+                    kernel_type=kernel_type_tvEWD,
+                    forecast_window_size=fcast_len
+                )
+                errs
+            else
+                error("Unsupported benchmark_method: $benchmark_method")
+            end
+        end
+
+        # Compute comparison errors
+        comp_errors = begin
+            if comparison_method == :ARp
+                _, _, errs = ARp_forecast(simulated_series, in_sample_window_size, fcast_len, forecast_horizon, ar_order)
+                errs
+            elseif comparison_method == :TVAR
+                _, _, errs = TVAR_forecast(
+                    simulated_series,
+                    in_sample_window_size,
+                    fcast_len,
+                    forecast_horizon,
+                    ar_order,
+                    tvp_kernel_width;
+                    kernel_type=kernel_type_tvAR
+                )
+                errs
+            elseif comparison_method == :HAR
+                _, _, errs = HAR_forecast_legacy(simulated_series, in_sample_window_size, fcast_len, forecast_horizon)
+                errs
+            elseif comparison_method == :TVHAR
+                _, _, errs = TVHAR_forecast(
+                    simulated_series,
+                    in_sample_window_size,
+                    fcast_len,
+                    forecast_horizon,
+                    tvp_kernel_width;
+                    kernel_type=kernel_type_tvHAR
+                )
+                errs
+            elseif comparison_method == :tvEWD
+                _, _, errs = tvEWD_forecast(
+                    simulated_series,
+                    in_sample_window_size,
+                    forecast_horizon,
+                    max_ar_order,
+                    ar_lag_for_trend,
+                    jmax_scale,
+                    tvp_constant_kernel_width,
+                    irf_kernel_width,
+                    forecast_kernel_width;
+                    kernel_type=kernel_type_tvEWD,
+                    forecast_window_size=fcast_len
+                )
+                errs
+            else
+                error("Unsupported comparison_method: $comparison_method")
+            end
+        end
+
+        # SED estimation
+        smoothed_sed = SED_smooth_one(
+            bench_errors,
+            comp_errors,
+            smoothing_bandwidth,
+            smoothing_kernel
+        )
+        push!(SED_list, smoothed_sed)
+        @info "Bootstrap $i generated."
+    #end
+
+    # Compute and return the single global threshold calculated as the 1-alpha quantile
+    return smoothed_sed
 end

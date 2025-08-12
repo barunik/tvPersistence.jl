@@ -4,6 +4,7 @@ include("TimeVarying_IRF.jl")
 include("Helper_functions.jl")
 using .tvOLS_estimator
 using GLMNet
+using MultivariateStats
 
 using CSV, DataFrames,GLM
 using Distributions, LinearAlgebra, Statistics
@@ -418,7 +419,8 @@ function tvEWD_forecast(
                 coef_vec = GLMNet.coef(fit)
                 scale_component_weights = coef_vec
             else
-                scale_component_weights = tvOLS_estimator.OLSestimator(Y_chron, X_chron)
+                #scale_component_weights = tvOLS_estimator.OLSestimator(Y_chron, X_chron)
+                scale_component_weights = MultivariateStats.llsq(X_chron, Y_chron; bias = false)
             end
     
             ####### TREND FORECAST CALCULATION ######
