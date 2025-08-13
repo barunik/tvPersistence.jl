@@ -25,19 +25,19 @@ This example iillustrates how to obtain the decomposition of dynamic persistence
 Load packages:
 
 ```julia
-using CSV, DataFrames,GLM
-using Distributions, LinearAlgebra, Statistics
-using Plots, StatsBase, StatsPlots, Colors
-using Random
+using CSV, DataFrames, BSON, Random, Dates, Plots, StatsBase
 using BSON: @save, @load
 ```
 
-Load files containing core functions:
+Load modules containing core functions:
 
 ```julia
-include("TV-EWD Implementation/TV-EWD_forecast.jl") # Forecasting function
-include("TV-EWD Implementation/persistence_plot.jl") # Dynamic Persistence decomposition plots
-include("Pockets of Predictability.jl") # Pockets of Predictability extraction and plots
+# Core TV-EWD functionality module
+include("src/TvPersistence/TvPersistence.jl")
+using .TvPersistence
+# SED Threshold calculations and Pockets of Predictability functionality
+include("src/SED_Thresholds/SEDThresholds.jl")
+using .SEDThresholds
 ```
 
 Load example data:
@@ -113,93 +113,163 @@ display(plot([actual_test forecast_test], label=["Data" "Forecast"],frame=:box))
 ![svg](/readme_files/TV-EWD_forecast_example.svg)
 
 ### Part 3: Find and plot Pockets of Predictability
-Here we compare the TV-EWD forecasting approach with the benchmark HAR model through Pockets of Predictability, generating a plot that clearly shows non-spurious pockets given a confidence threshold obtained through bootstrap simulations:
+Here we compare the TV-EWD forecasting approach with the benchmark HAR model through Pockets of Predictability, generating a plot that clearly shows non-spurious pockets given a 95% confidence threshold obtained through bootstrap simulations:
 
 #### Step 1: Calculate the threshold
 
-Note this step is computationally expensive, and to replicate teh results from the paper one needs to use server with multiple cores, as we have used median of  496 stocks.
+Open the notebook SED_threshold_example.ipynb (Make sure you have Julia Kernel installed and connected to Jupyter). The main function handling the calculations of the thresholds allows to parallelize the computation among multiple cores (see documentation)
 
-The script `run_sed_threshold.sh` allows you to calculate the SED threshold using bootstrap simulations in parallel.
+```julia
+function calculate_bootstrap_threshold_parallel(i, # iteration number
+        series::Vector{Float64}, # univariate time-series
+        ar_order::Int, # AR order for bootstrap-resampling
+        in_sample_window_size::Int,
+        forecast_horizon::Int,
+        smoothing_bandwidth::Float64, # badnwidth for smoothed SED regression
+        benchmark_method::Symbol, # Method with which we compare TV-EWD forecasting performance (:HAR in our case)
+        comparison_method::Symbol; # Method we are interested in (:tvEWD in our case)
+        fcast_len::Int,
+        tvp_kernel_width::Float64 = 0.4, # Kernel width for TV-AR and TV-HAR forecasting (irrelevant if using HAR and TV-EWD)
+        smoothing_kernel::String = "triweight", # SED regression kernel type
+        kernel_type_tvEWD::String = "Gaussian",
+        kernel_type_tvHAR::String = "Gaussian",
+        kernel_type_tvAR::String = "Gaussian",
+        max_ar_order::Int = 1, # TV-EWD AR order for Impulse Response Function calculations
+        jmax_scale::Int = 7, # Maximal scale we are interested in
+        ar_lag_for_trend::Int = 1, # Trend forecasting for TV-EWD AR order
+        tvp_constant_kernel_width::Float64 = 0.1,
+        irf_kernel_width::Float64 = 0.2,
+        forecast_kernel_width::Float64 = 0.4,
+    )
+```
 
 ##### Usage
 
-To run the script, open a terminal (e.g. Git Bash on Windows) and execute:
-
-```bash
-./run_sed_threshold.sh -n NUM_SIMULATIONS -c NUM_CORES -f CONFIG_FILE
-
-```
-
-##### Arguments:
-
--n — number of bootstrap replications to perform
-
--c — number of worker processes (cores) to use for parallel computation
-
--f — path to a configuration file containing other required parameters
-
-##### Configuration File Format:
-
-The configuration file passed via -f is a plain text file with one key-value pair per line. Lines starting with # are comments. Example parameters set in file `example_config.txt`.
-
-##### Example:
-Example below prints a threshold 0.0015675424694935195 into the terminal, calculated from 30 runs of the bootstrap simulated series on 3 cores.
-
-```bash
-./run_sed_threshold.sh -n 30 -c 3 -f example_config.txt
-```
+We use median volatility of 496 S&P500 stocks as our data series to calculate the threshold. First, import necessary packages:
 
 ```julia
-include("bootstrap_thresholds.jl") # file containing the function
+using Distributed
+using CSV, DataFrames, BSON, Random
+```
 
-ar_order = 1
-in_sample_window = 1000
-forecast_horizon = 1
+Next, set the number of bootstrap simulations and number of cores you want to use in your computation:
+
+```julia
+num_workers = 4
 num_replicates = 100
-smoothing_bw = 0.0176
-cutoff_start = 100
-forecast_length = fcast_length
+addprocs(num_workers)
+```
 
-# Choose one benchmark and one comparison method:
-bench = :HAR
-comp  = :tvEWD  # or :TVHAR, or :tvEWD
+Export necessary information for the calculation to all cores:
 
-@load "all_forecasts_V2.bson" forecasts
-har_e    = forecasts.har_e
-TV_EWD_e  = forecasts.TV_EWD_e
+```julia
+@everywhere begin
+    data_file                    = "data/median_RV.csv"
+    data_column                  = "x1"
+    missingstring                = "NA"
 
-threshold_fixed = calculate_bootstrap_threshold(
-    data0,
-    ar_order,
-    in_sample_window,
-    forecast_horizon,
-    num_replicates,
-    smoothing_bw,
-    cutoff_start,
-    bench,
-    comp;
-    forecast_length,
-    random_seed = 0,
-    tvp_kernel_width = 0.4,
-    kernel_type = "Gaussian",
-    max_ar_order = 2,
-    jmax_scale = 5,
-    ar_lag_for_trend = 1,
-    tvp_constant_kernel_width = 0.05,
-    irf_kernel_width = 0.2,
-    forecast_kernel_width = 0.5
-)
+    ar_order                     = 1
+    in_sample_window_size        = 1000
+    forecast_horizon             = 1
+    forecast_length              = 2130
+    random_seed                  = 1234
+
+    smoothing_bandwidth          = 0.05
+    cutoff_start_index           = 100
+
+    benchmark_method             = "HAR"
+    comparison_method            = "tvEWD"
+
+    tvp_kernel_width             = 0.4
+    kernel_type                  = "Epanechnikov"
+    max_ar_order                 = 1
+    jmax_scale                   = 5
+    ar_lag_for_trend             = 1
+    tvp_constant_kernel_width    = 0.1
+    irf_kernel_width             = 0.2
+    forecast_kernel_width        = 0.5
+    smoothing_kernel             = "one-sided"
+    kernel_type_tvEWD            = "Epanechnikov"
+    kernel_type_tvHAR            = "Epanechnikov"
+    kernel_type_tvAR             = "Epanechnikov"
+
+    alpha_level                  = 0.05 # 1- confidence level we want (95% in this case)
+end
+```
+
+Export the module containing core functionality for SED threshold calculations:
+
+```julia
+const SED_PATH = abspath("src/SED_Thresholds/SEDThresholds.jl")
+@everywhere include($SED_PATH)        # <— absolute path shipped to workers
+@everywhere using .SEDThresholds
+```
+
+Load the data:
+
+```julia
+df = CSV.File(data_file, missingstring=[missingstring], header=true) |> DataFrame;
+
+# turn column name into a Symbol, drop missings & scale
+col_sym = Symbol(data_column);
+series  = Float64.(df[.!ismissing.(df[!, col_sym]), col_sym]);
+```
+
+Obtain vectors of fitted smoothed SED values:
+
+```julia
+sed_vals = pmap(1:num_replicates) do i
+    # re-seed for reproducibility
+    Random.seed!(random_seed + i)
+
+    calculate_bootstrap_threshold_parallel(
+        i, series,
+        ar_order, in_sample_window_size, forecast_horizon,
+        smoothing_bandwidth,
+        Symbol(benchmark_method), Symbol(comparison_method);
+        fcast_len                  = forecast_length,
+        tvp_kernel_width           = tvp_kernel_width,
+        kernel_type_tvEWD          = kernel_type_tvEWD,
+        kernel_type_tvHAR          = kernel_type_tvHAR,
+        kernel_type_tvAR           = kernel_type_tvAR,
+        smoothing_kernel           = smoothing_kernel,
+        max_ar_order               = max_ar_order,
+        jmax_scale                 = jmax_scale,
+        ar_lag_for_trend           = ar_lag_for_trend,
+        tvp_constant_kernel_width  = tvp_constant_kernel_width,
+        irf_kernel_width           = irf_kernel_width,
+        forecast_kernel_width      = forecast_kernel_width
+    )
+end;
+
+# remove working processes
+rmprocs(workers())
+```
+
+Finally, calculate the threshold and (optionally) save the SED vectors in a BSON file so as to not have to run the calculation again if needed:
+
+```julia
+thr = SEDThresholds.compute_global_threshold(sed_vals, cutoff_start_index, alpha_level)
+println("SED threshold: ", thr)
+# Save the SED values into BSON file
+BSON.@save "sed_thresholds.bson" sed_vals thr
 ```
 
 #### Step 2: Generate forecasts of TV-EWD and the benchmark model, while saving the dates of forecasted values
 
-```julia
-# Benchmark Forecasting functions
-include("TV-EWD Implementation/Benchmark Forecasts.jl")
+To this, first load the module containing TV-EWD and benchmark model forecasting functions (or use example.jl)
 
+```julia
+include("src/TvPersistence/TvPersistence.jl")
+using .TvPersistence
+```
+
+From here, we can generate HAR and TV-EWD forecasts
+
+```julia
 #––– Parameters –––
 tt           = 1000 # Fisrt 1000 days for model fitting
-fcast_length = 2280 # rolling-window forecasts until the end
+fcast_length = 2258 # rolling-window forecasts until the end
 horizon      = 1
 bw           = 0.3 # Kernel bandwidth for TV-OLS based models
 p            = 1   # AR order for AR and TV‐AR
@@ -209,7 +279,7 @@ TV_EWD_f, TV_EWD_r, TV_EWD_e = tvEWD_forecast(data0, tt, 1, 2, 1, 5, 0.05, 0.2, 
     kernel_type = "Epa",
     LASSO_scale_selection = false,
     forecast_window_size = fcast_length); # Scales 1-7
-har_f,    har_r,    har_e    = HAR_forecast(data0, tt, fcast_length, horizon);
+har_f,    har_r,    har_e    = HAR_forecast_legacy(data0, tt, fcast_length, horizon);
 
 # Alternatively, load from the BSON file attached
 @load "all_forecasts_V2.bson" forecasts
