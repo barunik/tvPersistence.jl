@@ -1,25 +1,21 @@
 using Pkg
-# Activate the project environment in the current directory (".")
 Pkg.activate(".")
-# Instantiate the environment, which installs exact versions of dependencies
 Pkg.instantiate()
-Pkg.add("Statistics")
-using CSV, DataFrames,GLM
-using Distributions, LinearAlgebra, Statistics
-using Plots, StatsBase, StatsPlots, Colors
-using Random
 
-include("models/tvOLS.jl")
-using .tvOLS_estimator
-include("TV-EWD Implementation/TimeVarying_IRF.jl")
-include("TV-EWD Implementation/TV-EWD.jl")
-include("TV-EWD Implementation/TV-EWD_forecast.jl")
-include("TV-EWD Implementation/persistence_plot.jl")
-include("Pockets of Predictability.jl")
-### --------------------------------------------------------------------------###
+# Core TV-EWD functionality module
+include("src/TvPersistence/TvPersistence.jl")
+using .TvPersistence
+
+# SED Threshold calculations and Pockets of Predictability functionality
+include("src/SED_Thresholds/SEDThresholds.jl")
+using .SEDThresholds
+
+# External packages
+using CSV, DataFrames, BSON, Random, Dates, Plots, StatsBase
+using BSON: @save, @load
 
 # Load example data
-data_read=CSV.File("example_data.csv",missingstring=["NA"],header=true) |> DataFrame;
+data_read=CSV.File("data/example_data.csv",missingstring=["NA"],header=true) |> DataFrame;
 
 ############ Replication for TV-EWD forecast ##################
 data0=100.0.*data_read.A[ismissing.(data_read.A).==false];
@@ -47,12 +43,9 @@ xticks!(Dates.value.(xtick_dates), string.(year_ticks))
 scatter!(date_vector[6:12:end],yearfirstb_new[1:12:size(yearfirstb_new,1),:],color=[myrainbow[1] myrainbow[2] myrainbow[3] cgrad(:grayC, 7, categorical = true)[2] myrainbow[5] myrainbow[6] myrainbow[7]],
     label=["2 days" "4" "8" "16" "32" "64" "128+"],msc=:white,markersize=3,markershape=[:circle :diamond :utriangle :+ :x :heptagon :dtriangle])
 
-# Benchmark Forecasts
-include("TV-EWD Implementation/Benchmark Forecasts.jl")
-
-#––– Parameters –––
+#––– Forecast Parameters –––
 tt           = 1000 # Fisrt 1000 days for model fitting
-fcast_length = 2280 # rolling-window forecasts until the end
+fcast_length = 2258 # rolling-window forecasts until the end
 horizon      = 1
 bw           = 0.3 # Kernel bandwidth for TV-OLS based models
 p            = 1   # AR order for AR and TV‐AR
@@ -67,18 +60,12 @@ EWD_f,    EWD_r,    EWD_e    = EWD_forecast(data0, tt, fcast_length, 1, 1,5); # 
 ar1_f,    ar1_r,    ar1_e    = ARp_forecast(data0, tt, fcast_length, horizon, p);
 ar3_f,    ar3_r,    ar3_e    = ARp_forecast(data0, tt, fcast_length, horizon, 3);
 tvar1_f,  tvar1_r,  tvar1_e  = TVAR_forecast(data0, tt, fcast_length, horizon, p, bw);
-har_f,    har_r,    har_e    = HAR_forecast(data0, tt, fcast_length, horizon);
+har_f, har_e    = HAR_forecast_legacy(data0, tt, fcast_length, horizon);
 tvhar_f,  tvhar_r,  tvhar_e  = TVHAR_forecast(data0, tt, fcast_length, horizon, bw);
 
 # Save the corresponding date vector for Pockets plotting
 forecast_dates = date_vector[tt+1:tt+fcast_length]
 
-# Save into dedicated file
-using Pkg
-Pkg.add("BSON")
-using BSON: @save, @load
-
-# 3a. (Option A) Save each vector as its own entry in the .bson file:
 forecasts = (
   TV_EWD_f = TV_EWD_f,
   TV_EWD_r = TV_EWD_r,
@@ -121,7 +108,7 @@ p2 = plot([tvar1_r tvar1_f],
     title = "TV-AR(1)",
     frame = :box)
 
-p3 = plot([har_r har_f],
+p3 = plot([ar1_r har_f],
     label = ["Data" "Forecast"],
     title = "HAR",
     frame = :box)
@@ -162,9 +149,6 @@ mycolor=[colorant"rgb(222,102,62)",colorant"rgb(255,145,43)",colorant"rgb(76,144
 
 ### Pockets of Predictability ######
 
-# Bootstrap threshold calculation
-include("bootstrap_thresholds.jl")
-
 ar_order = 1
 in_sample_window = 1000
 forecast_horizon = 1
@@ -181,100 +165,12 @@ comp  = :tvEWD  # or :TVHAR, or :tvEWD
 har_e    = forecasts.har_e
 TV_EWD_e  = forecasts.TV_EWD_e
 
-threshold = calculate_bootstrap_threshold(
-    data0,
-    ar_order,
-    in_sample_window,
-    forecast_horizon,
-    num_replicates,
-    smoothing_bw,
-    cutoff_start,
-    bench,
-    comp;
-    forecast_length,
-    random_seed = 0,
-    tvp_kernel_width = 0.3,
-    kernel_type = "Gaussian",
-    max_ar_order = 2,
-    jmax_scale = 5,
-    ar_lag_for_trend = 1,
-    tvp_constant_kernel_width = 0.1,
-    irf_kernel_width = 0.2,
-    forecast_kernel_width = 0.5
-)
-
-# Calculated value: 2.066830453726511e-6
+# Threshold calculated from SED_threshold_example.ipynb
 threshold_fixed = 2.066830453726511e-6
 println("95%-threshold for smoothed dSED (", bench, " vs ", comp, "): ", threshold_fixed)
-# Load the single `forecasts` object from disk
 
 # Imported from outside, possibly not correct thresholds
-tvEWD_vs_HAR_pockets = plot_pockets(Float64.(winsor(har_e,prop=0.05)), Float64.(winsor(TV_EWD_e,prop=0.05)), forecast_dates, 0.01,threshold_fixed; title = "TV-EWD vs. HAR (h=1)")
+tvEWD_vs_HAR_pockets = SEDThresholds.plot_pockets(Float64.(winsor(har_e,prop=0.05)), Float64.(winsor(TV_EWD_e,prop=0.05)), forecast_dates, 0.01,threshold_fixed; title = "TV-EWD vs. HAR (h=1)")
 display(tvEWD_vs_HAR_pockets)
 
 savefig("pockets_of_predictability_example.svg")
-
-# --------------------------------------------------------
-# parallelize_bootstrap.jl
-using Distributed
-rmprocs(workers())
-# Spin up, for example, 4 additional workers
-addprocs(3)
-
-# Load Random/Statistics and your helper file everywhere
-@everywhere begin
-  using Random, Statistics
-  include("bootstrap_thresholds_parallel.jl")
-  random_seed = 123    # defines calculate_bootstrap_threshold()
-end
-
-
-@everywhere if random_seed != 0
-    Random.seed!(random_seed + myid())   # or just `+ i` if you seed per replicate
-end
-
-# On the master, set up your “static” arguments:
-@everywhere begin
-    # Load example data
-    data_read=CSV.File("example_data.csv",missingstring=["NA"],header=true) |> DataFrame;
-
-    ############ Replication for TV-EWD forecast ##################
-    data0=100.0.*data_read.A[ismissing.(data_read.A).==false];
-    series               = data0
-    ar_order             = 5
-    in_sample_window_size= 1000
-    forecast_horizon     = 1
-    fcast_length = 500
-    number_of_replicates = 30
-    smoothing_bandwidth  = 0.4
-    cutoff_start_index   = in_sample_window_size + 1
-    benchmark_method     = :HAR
-    comparison_method    = :tvEWD
-end
-
-# any other keyword args you want to pass:
-@everywhere begin
-    kwargs = (
-        forecast_length = fcast_length,
-        random_seed     = 1234,
-        tvp_kernel_width= 0.4,
-        kernel_type     = "Gaussian",
-    )
-end
-# 4) pmap over i=1:B
-@info "Launching $number_of_replicates parallel bootstrap jobs…"
-sed_collection = pmap(i -> calculate_bootstrap_threshold_parallel(
-    i,
-    series,
-    ar_order,
-    in_sample_window_size,
-    forecast_horizon,
-    smoothing_bandwidth,
-    cutoff_start_index,
-    benchmark_method,
-    comparison_method;
-    kwargs...          # splat the keyword args
-), 1:number_of_replicates)
-
-
-compute_global_threshold(sed_collection, 100, 0.05)
