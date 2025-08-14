@@ -136,6 +136,7 @@ function plot_pockets(
     date_vector,
     smoothing_bandwidth,
     thresholds;
+    plot_zero_pockets = false,
     auto_xticks     = true,
     user_xticks     = nothing,
     title           = "",
@@ -166,8 +167,11 @@ function plot_pockets(
     end
 
     # 3) normalize thresholds to a vector
-    threshold_levels = isa(thresholds, AbstractVector) ? thresholds : [0.0, thresholds]
-
+    if plot_zero_pockets == true
+        threshold_levels = isa(thresholds, AbstractVector) ? thresholds : [0.0, thresholds]
+    else
+        threshold_levels = isa(thresholds, AbstractVector) ? thresholds : [thresholds]
+    end
     # 4) start the base plot
     p = plot(
         sed_curve;

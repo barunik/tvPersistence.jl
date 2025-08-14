@@ -51,17 +51,17 @@ bw           = 0.3 # Kernel bandwidth for TV-OLS based models
 p            = 1   # AR order for AR and TV‐AR
 
 #––– Generate forecasts –––
-TV_EWD_f, TV_EWD_r, TV_EWD_e = tvEWD_forecast(data0, tt, 1, 2, 1, 5, 0.05, 0.2, 0.5, 
+TV_EWD_f, TV_EWD_r, TV_EWD_e = TvPersistence.tvEWD_forecast(data0, tt, 1, 2, 1, 5, 0.05, 0.2, 0.5, 
     kernel_type = "Epa",
     LASSO_scale_selection = false,
     forecast_window_size = fcast_length); # Scales 1-7
 
-EWD_f,    EWD_r,    EWD_e    = EWD_forecast(data0, tt, fcast_length, 1, 1,5); # Scales 1-7
-ar1_f,    ar1_r,    ar1_e    = ARp_forecast(data0, tt, fcast_length, horizon, p);
-ar3_f,    ar3_r,    ar3_e    = ARp_forecast(data0, tt, fcast_length, horizon, 3);
-tvar1_f,  tvar1_r,  tvar1_e  = TVAR_forecast(data0, tt, fcast_length, horizon, p, bw);
-har_f, har_e    = HAR_forecast_legacy(data0, tt, fcast_length, horizon);
-tvhar_f,  tvhar_r,  tvhar_e  = TVHAR_forecast(data0, tt, fcast_length, horizon, bw);
+EWD_f,    EWD_r,    EWD_e    = TvPersistence.EWD_forecast(data0, tt, fcast_length, 1, 1,5); # Scales 1-7
+ar1_f,    ar1_r,    ar1_e    = TvPersistence.ARp_forecast(data0, tt, fcast_length, horizon, p);
+ar3_f,    ar3_r,    ar3_e    = TvPersistence.ARp_forecast(data0, tt, fcast_length, horizon, 3);
+tvar1_f,  tvar1_r,  tvar1_e  = TvPersistence.TVAR_forecast(data0, tt, fcast_length, horizon, p, bw);
+har_f, har_e, har_r,_    = TvPersistence.HAR_forecast_legacy(data0, tt, fcast_length, horizon);
+tvhar_f,  tvhar_r,  tvhar_e  = TvPersistence.TVHAR_forecast(data0, tt, fcast_length, horizon, bw);
 
 # Save the corresponding date vector for Pockets plotting
 forecast_dates = date_vector[tt+1:tt+fcast_length]
@@ -108,7 +108,7 @@ p2 = plot([tvar1_r tvar1_f],
     title = "TV-AR(1)",
     frame = :box)
 
-p3 = plot([ar1_r har_f],
+p3 = plot([har_r har_f],
     label = ["Data" "Forecast"],
     title = "HAR",
     frame = :box)

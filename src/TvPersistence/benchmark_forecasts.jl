@@ -222,6 +222,7 @@ function HAR_forecast_legacy(data0,tt,fcast_length,horizon)
     horizon_forecast_corsi=zeros(fcast_length);
     daily_onestep=zeros(fcast_length,horizon);
     const_HAR=zeros(fcast_length,horizon);
+    realized_HAR = zeros(fcast_length);
 
     Error_HAR=zeros(fcast_length);
 
@@ -258,9 +259,10 @@ function HAR_forecast_legacy(data0,tt,fcast_length,horizon)
         horizon_forecast_corsi[ii+1] = horizon^(-1)*sum(daily_onestep[(ii+1),:]); 
         Error_HAR[ii+1]=(horizon_forecast_corsi[ii+1]-RVh[fcast_length-ii])
         const_HAR[ii+1]=betaHAR[1]
+        realized_HAR[ii+1] = RVh[ii+1]
         
     end
-    return (horizon_forecast_corsi,Error_HAR,const_HAR)
+    return (horizon_forecast_corsi,Error_HAR,reverse(realized_HAR),const_HAR)
 end
 
 # Time-Varying HAR (TV-HAR)
