@@ -65,7 +65,7 @@ function ARp_forecast(
         errors[ii+1]   = forecasts[ii+1] - realized[ii+1]
     end
 
-    return forecasts, realized, errors
+    return (forecasts, realized, errors)
 end
 
 # Time-Varying AR(p) using local linear estimation
@@ -95,7 +95,10 @@ function TVAR_forecast(data0,tt, p, fcast_length,horizon,kernel_width_ARtvp; ker
     chronR=data0.-muR;
     r=reverse(chronR);
 
-    fcast_length = T-tt-21-horizon; #length of forecast sample
+    if fcast_length > (length(data0) - p - horizon)
+        error("Maximum forecast length exceeded")
+    end
+
 
     RVh = zeros(length(r)-horizon+1,1);
     for i=1:length(RVh)
@@ -117,7 +120,7 @@ function TVAR_forecast(data0,tt, p, fcast_length,horizon,kernel_width_ARtvp; ker
         Error_Jcomp_tvp[ii+1] = (horizon_forecast_AR[ii+1]-RVh[fcast_length-ii])
         
     end
-    return [horizon_forecast_AR, Error_Jcomp_tvp]
+    return (horizon_forecast_AR, Error_Jcomp_tvp)
 end
 
 # Heterogeneous Autoregressive (HAR) model
@@ -298,7 +301,7 @@ function TVHAR_forecast(data0, tt, fcast_length, horizon,kernel_width; kernel_ty
         horizon_forecast_corsiTVP[ii+1] = horizon^(-1)*sum(daily_onestepTVP[(ii+1),:]); 
         Error_HARTVP[ii+1]=(horizon_forecast_corsiTVP[ii+1]-RVh[fcast_length-ii])
  end
-    return [horizon_forecast_corsiTVP,Error_HARTVP]
+    return (horizon_forecast_corsiTVP,Error_HARTVP)
 end
 
 
@@ -498,5 +501,5 @@ function EWD_forecast(data0,tt,maxAR,JMAX,horizon, fcast_length = "Maximum")
 
     end
     
-    return (horizon_forecast_Jcomp,RV_h,Error_Jcomp)
+    return (horizon_forecast_Jcomp, RV_h, Error_Jcomp)
 end

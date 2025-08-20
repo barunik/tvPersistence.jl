@@ -236,9 +236,9 @@ function calculate_bootstrap_threshold_parallel(i,
             _, errs = TVAR_forecast(
                 simulated_series,
                 in_sample_window_size,
+                ar_order,
                 fcast_len,
                 forecast_horizon,
-                ar_order,
                 tvp_kernel_width;
                 kernel_type=kernel_type_tvAR
             )
@@ -263,6 +263,7 @@ function calculate_bootstrap_threshold_parallel(i,
             jmax_scale,
             forecast_horizon,
             fcast_len)
+            errs
         elseif benchmark_method == :tvEWD
             # Pass forecast_window_size = forecast_length (Int or "Maximum")
             _, _, errs = tvEWD_forecast(
@@ -293,9 +294,9 @@ function calculate_bootstrap_threshold_parallel(i,
             _, errs = TVAR_forecast(
                 simulated_series,
                 in_sample_window_size,
+                ar_order,
                 fcast_len,
                 forecast_horizon,
-                ar_order,
                 tvp_kernel_width;
                 kernel_type=kernel_type_tvAR
             )
@@ -313,13 +314,14 @@ function calculate_bootstrap_threshold_parallel(i,
                 kernel_type=kernel_type_tvHAR
             )
             errs
-        elseif benchmark_method == :EWD
+        elseif comparison_method == :EWD
             _, _, errs = EWD_forecast(simulated_series,
             in_sample_window_size,
             max_ar_order,
             jmax_scale,
             forecast_horizon,
             fcast_len)
+            errs
         elseif comparison_method == :tvEWD
             _, _, errs = tvEWD_forecast(
                 simulated_series,
