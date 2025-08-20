@@ -3,8 +3,8 @@ Pkg.activate(".")
 Pkg.instantiate()
 
 # Core TV-EWD functionality module
-include("src/TvPersistence/TvPersistence.jl")
-using .TvPersistence
+import TvPersistence 
+
 
 # SED Threshold calculations and Pockets of Predictability functionality
 include("src/SED_Thresholds/SEDThresholds.jl")
@@ -23,14 +23,14 @@ date_vector = data_read[ismissing.(data_read.A).==false,:dates];
 date_vector = Date.(date_vector, "dd.mm.yyyy")
 
 ################################# TV-EWD forecast #####################################################
-forecast_test, actual_test, forecast_error_test = tvEWD_forecast(data0, 1000, 1, 2, 1, 5, 0.05, 0.2, 0.5, 
+forecast_test, actual_test, forecast_error_test = TvPersistence.tvEWD_forecast(data0, 1000, 1, 2, 1, 5, 0.05, 0.2, 0.5, 
     kernel_type = "Epa",
     LASSO_scale_selection = false, forecast_window_size = 100);
 
 display(plot([actual_test forecast_test], label=["Data" "Forecast"],frame=:box))
 
 ############ PERSISTENCE PLOT ##################
-decomp_new = tv_persistence_plot(data0,5,7,0.15,0.02, "Gaussian", "Gaussian");
+decomp_new = TvPersistence.tv_persistence_plot(data0,5,7,0.15,0.02, "Gaussian", "Gaussian");
 yearfirstb_new=decomp_new./sum(decomp_new,dims=2);
 
 year_ticks = unique(year.(date_vector[6:end]))
@@ -54,76 +54,69 @@ p            = 1   # AR order for AR and TV‐AR
 TV_EWD_f, TV_EWD_r, TV_EWD_e = TvPersistence.tvEWD_forecast(data0, tt, 1, 2, 1, 5, 0.05, 0.2, 0.5, 
     kernel_type = "Epa",
     LASSO_scale_selection = false,
-    forecast_window_size = fcast_length); # Scales 1-7
+    forecast_window_size = fcast_length); # Scales 1-5
 
-EWD_f,    EWD_r,    EWD_e    = TvPersistence.EWD_forecast(data0, tt, fcast_length, 1, 1,5); # Scales 1-7
+EWD_f,    EWD_r,    EWD_e    = TvPersistence.EWD_forecast(data0, tt, 1,5,1,fcast_length); # Scales 1-5
 ar1_f,    ar1_r,    ar1_e    = TvPersistence.ARp_forecast(data0, tt, fcast_length, horizon, p);
 ar3_f,    ar3_r,    ar3_e    = TvPersistence.ARp_forecast(data0, tt, fcast_length, horizon, 3);
-tvar1_f,  tvar1_r,  tvar1_e  = TvPersistence.TVAR_forecast(data0, tt, fcast_length, horizon, p, bw);
-har_f, har_e, har_r,_    = TvPersistence.HAR_forecast_legacy(data0, tt, fcast_length, horizon);
-tvhar_f,  tvhar_r,  tvhar_e  = TvPersistence.TVHAR_forecast(data0, tt, fcast_length, horizon, bw);
+tvar1_f,  tvar1_e  = TvPersistence.TVAR_forecast(data0, tt, p, fcast_length, horizon, bw);
+har_f, har_e, har_r,_    = TvPersistence.HAR_forecast(data0, tt, fcast_length, horizon);
+tvhar_f,  tvhar_e  = TvPersistence.TVHAR_forecast(data0, tt, fcast_length, horizon, bw);
 
 # Save the corresponding date vector for Pockets plotting
 forecast_dates = date_vector[tt+1:tt+fcast_length]
 
 forecasts = (
   TV_EWD_f = TV_EWD_f,
-  TV_EWD_r = TV_EWD_r,
   TV_EWD_e = TV_EWD_e,
 
   EWD_f    = EWD_f,
-  EWD_r    = EWD_r,
   EWD_e    = EWD_e,
 
   ar1_f    = ar1_f,
-  ar1_r    = ar1_r,
   ar1_e    = ar1_e,
 
   ar3_f    = ar3_f,
-  ar3_r    = ar3_r,
   ar3_e    = ar3_e,
 
   tvar1_f  = tvar1_f,
-  tvar1_r  = tvar1_r,
   tvar1_e  = tvar1_e,
 
   har_f    = har_f,
-  har_r    = har_r,
   har_e    = har_e,
 
   tvhar_f  = tvhar_f,
-  tvhar_r  = tvhar_r,
   tvhar_e  = tvhar_e,
 )
 @save "all_forecasts_V2.bson" forecasts
 
 #––– Build subplots –––
-p1 = plot([ar1_r ar1_f],
+p1 = plot([EWD_r TV_EWD_f],
     label = ["Data" "Forecast"],
-    title = "AR(1)",
+    title = "TV-EWD",
     frame = :box)
 
-p2 = plot([tvar1_r tvar1_f],
+p2 = plot([EWD_r tvar1_f],
     label = ["Data" "Forecast"],
     title = "TV-AR(1)",
     frame = :box)
 
-p3 = plot([har_r har_f],
+p3 = plot([EWD_r har_f],
     label = ["Data" "Forecast"],
     title = "HAR",
     frame = :box)
 
-p4 = plot([tvhar_r tvhar_f],
+p4 = plot([EWD_r tvhar_f],
     label = ["Data" "Forecast"],
     title = "TV-HAR",
     frame = :box)
 
-p5 = plot([ar3_r ar3_f],
+p5 = plot([EWD_r ar3_f],
     label = ["Data" "Forecast"],
     title = "AR(3)",
     frame = :box)
 
-p6 = plot([EWD_f EWD_r],
+p6 = plot([EWD_r EWD_f],
     label = ["Data" "Forecast"],
     title = "EWD",
     frame = :box)
@@ -159,7 +152,7 @@ forecast_length = fcast_length
 
 # Choose one benchmark and one comparison method:
 bench = :HAR
-comp  = :tvEWD  # or :TVHAR, or :tvEWD
+comp  = :tvEWD
 
 @load "all_forecasts_V2.bson" forecasts
 har_e    = forecasts.har_e
