@@ -17,6 +17,6 @@ include("persistence_plot.jl")
 include("benchmark_forecasts.jl") # HAR, TV-AR, AR, EWD forecasting functions
 include("tv_ewd_forecast.jl") # TV-EWD forecasting function -> main output function
 
-export tvEWD_forecast, tv_persistence_plot, ARp_forecast, HAR_forecast_legacy, TVHAR_forecast, TVAR_forecast, EWD_forecast
+export tvEWD_forecast, tv_persistence_plot, ARp_forecast, HAR_forecast_legacy, TVHAR_forecast, EWD_forecast, TVARp_forecast
 
 end

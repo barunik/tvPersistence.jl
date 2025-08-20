@@ -233,7 +233,7 @@ function calculate_bootstrap_threshold_parallel(i,
             _, _, errs = ARp_forecast(simulated_series, in_sample_window_size, fcast_len, forecast_horizon, ar_order)
             errs
         elseif benchmark_method == :TVAR
-            _, _, errs = TVAR_forecast(
+            _, errs = TVAR_forecast(
                 simulated_series,
                 in_sample_window_size,
                 fcast_len,
@@ -244,10 +244,10 @@ function calculate_bootstrap_threshold_parallel(i,
             )
             errs
         elseif benchmark_method == :HAR
-            _, errs = HAR_forecast_legacy(simulated_series, in_sample_window_size, fcast_len, forecast_horizon)
+            _, errs, _, _ = HAR_forecast(simulated_series, in_sample_window_size, fcast_len, forecast_horizon)
             errs
         elseif benchmark_method == :TVHAR
-            _, _, errs = TVHAR_forecast(
+            _, errs = TVHAR_forecast(
                 simulated_series,
                 in_sample_window_size,
                 fcast_len,
@@ -256,6 +256,13 @@ function calculate_bootstrap_threshold_parallel(i,
                 kernel_type=kernel_type_tvHAR
             )
             errs
+        elseif benchmark_method == :EWD
+            _, _, errs = EWD_forecast(simulated_series,
+            in_sample_window_size,
+            max_ar_order,
+            jmax_scale,
+            forecast_horizon,
+            fcast_len)
         elseif benchmark_method == :tvEWD
             # Pass forecast_window_size = forecast_length (Int or "Maximum")
             _, _, errs = tvEWD_forecast(
@@ -283,7 +290,7 @@ function calculate_bootstrap_threshold_parallel(i,
             _, _, errs = ARp_forecast(simulated_series, in_sample_window_size, fcast_len, forecast_horizon, ar_order)
             errs
         elseif comparison_method == :TVAR
-            _, _, errs = TVAR_forecast(
+            _, errs = TVAR_forecast(
                 simulated_series,
                 in_sample_window_size,
                 fcast_len,
@@ -294,10 +301,10 @@ function calculate_bootstrap_threshold_parallel(i,
             )
             errs
         elseif comparison_method == :HAR
-            _, _, errs = HAR_forecast_legacy(simulated_series, in_sample_window_size, fcast_len, forecast_horizon)
+            _, errs, _, _ = HAR_forecast(simulated_series, in_sample_window_size, fcast_len, forecast_horizon)
             errs
         elseif comparison_method == :TVHAR
-            _, _, errs = TVHAR_forecast(
+            _, errs = TVHAR_forecast(
                 simulated_series,
                 in_sample_window_size,
                 fcast_len,
@@ -306,6 +313,13 @@ function calculate_bootstrap_threshold_parallel(i,
                 kernel_type=kernel_type_tvHAR
             )
             errs
+        elseif benchmark_method == :EWD
+            _, _, errs = EWD_forecast(simulated_series,
+            in_sample_window_size,
+            max_ar_order,
+            jmax_scale,
+            forecast_horizon,
+            fcast_len)
         elseif comparison_method == :tvEWD
             _, _, errs = tvEWD_forecast(
                 simulated_series,

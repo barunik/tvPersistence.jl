@@ -4,9 +4,8 @@ using Random, Statistics, Dates, Colors, LinearAlgebra, StatsBase
 using Plots: plot, plot!, vspan!, hline!
 
 # Bring in TvPersistence via a relative include
-include(joinpath(@__DIR__, "..", "TvPersistence", "TvPersistence.jl"))
-using .TvPersistence: ARp_forecast, TVAR_forecast, HAR_forecast_legacy, TVHAR_forecast,
-                      tvEWD_forecast, ARlags_chron, tvOLS, OLSestimator
+import TvPersistence: ARp_forecast, TVAR_forecast, HAR_forecast, TVHAR_forecast,
+                      EWD_forecast, tvEWD_forecast, ARlags_chron, tvOLS, OLSestimator
 
 include("sed_smoother.jl")
 include("pockets_of_predictability.jl")

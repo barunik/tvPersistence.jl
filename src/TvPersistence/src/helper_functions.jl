@@ -49,3 +49,14 @@ function ARlags_chron(X, p)
     end
     return (y, xx)
 end
+
+# Same as ARlags_chron but for reversed data
+function ARlags(X, p)
+    #AR regression to estimate the AR coefficients
+    y=X[1:end-p]
+    xx = zeros(length(y),p)
+    for i=1:length(y)
+        xx[i,:]=X[i+1:i+p]; #fill the matrix with lags
+    end
+    return (y,xx)
+end

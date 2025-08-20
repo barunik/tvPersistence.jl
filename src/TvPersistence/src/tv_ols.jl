@@ -52,7 +52,7 @@ function kernel(t::AbstractVector, bw::Real, tkernel::String)
     elseif tkernel == "one-sided"
         return (z.<=0).*exp.(-0.5 * z.^2)
     elseif tkernel == "triweight"
-        return 35/22 * (1 .-z.^2).^3
+        return (1 .-z.^2).^3
     else
         error("Unknown kernel type")
     end
@@ -151,7 +151,7 @@ Estimate a Time-Varying AR(p) model using tvOLS and generate n_ahead forecasts b
 - `Vector{Float64}`: A vector containing the forecasted values for the next `n_ahead` periods.
 """
 function forecast_tvAR(y::AbstractVector, p::Integer, bw::Real,
-     n_ahead::Integer; tkernel::String = "Gaussian")::Vector{Float64}
+     n_ahead::Integer; tkernel::String = "Gaussian", include_intercept::Bool = true)::Vector{Float64}
 
     T = length(y)
 
@@ -174,7 +174,11 @@ function forecast_tvAR(y::AbstractVector, p::Integer, bw::Real,
     X_p_with_intercept = hcat(ones(T-p), X_p_matrix)  # (T-p) x (p+1)
 
     # Fit the Time-Varying AR(p) model using tvOLS
-    result = tvOLS(X_p_with_intercept, y[p+1:T], bw, tkernel)
+    if include_intercept == true
+        result = tvOLS(X_p_with_intercept, y[p+1:T], bw, tkernel)
+    else
+        result = tvOLS(X_p_matrix, y[p+1:T], bw, tkernel)
+    end
 
     coefficients = result.coefficients  # (T-p) x (p+1)
 
@@ -188,8 +192,13 @@ function forecast_tvAR(y::AbstractVector, p::Integer, bw::Real,
     latest_coeff = coefficients[last_valid, :]  # Vector of size (p+1)
 
     # Extract intercept and AR coefficients
-    intercept = latest_coeff[1]
-    ar_coeffs = latest_coeff[2:end]  # Vector of size p
+    if include_intercept == true
+        intercept = latest_coeff[1]
+        ar_coeffs = latest_coeff[2:end]  # Vector of size p
+    else
+        intercept = 0.0
+        ar_coeffs = latest_coeff
+    end
 
     # Initialize the history with the last p observations
     history = copy(y[end-p+1:end])

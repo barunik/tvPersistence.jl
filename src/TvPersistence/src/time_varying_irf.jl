@@ -9,11 +9,12 @@ function compute_residuals_tv(response_data, regressor_data, coefficients::Matri
     return residuals
 end
 
-# Helper function to compute standard deviation of residuals
+#= Helper function to compute standard deviation of residuals
 function compute_standard_deviation(residuals::Vector{Float64}, max_lag::Int)::Float64
     variance = (residuals' * residuals) ./ (length(residuals) - max_lag)
     return sqrt.(variance)
 end
+=#
 
 # General function to compute time-varying IRF coefficients
 """
