@@ -28,19 +28,12 @@ function ARp_forecast(data::Vector{Float64},
     centered = data .- mu
     revCentered = reverse(centered)
 
-    # The original code recomputed fcast_length:
-    # fcast_length = T - tt - 21 - horizon
-    fcastLength = T - trainWindow - 21 - horizon
-    @assert fcastLength > 0 "Computed forecast length <= 0; check trainWindow/horizon vs T."
-
     # Rolling average target of reversed, centered data (window = horizon)
-    # length = length(revCentered) - horizon + 1
     rvH = calculate_rolling_mean(revCentered, horizon)
 
     horizonForecastAR = zeros(Float64, fcastLength)
     errorVsRV         = zeros(Float64, fcastLength)
 
-    # ii = 0 .. fcastLength - 1
     for ii in 0:(fcastLength - 1)
         # estimation window indices in reversed space
         lo = fcastLength + horizon - ii

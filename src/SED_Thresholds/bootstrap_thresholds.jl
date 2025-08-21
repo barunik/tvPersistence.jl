@@ -230,7 +230,7 @@ function calculate_bootstrap_threshold_parallel(i,
     # benchmark forecast errors
     bench_errors = begin
         if benchmark_method == :ARp
-            _, _, errs = ARp_forecast(simulated_series, in_sample_window_size, fcast_len, forecast_horizon, ar_order)
+            _, errs = ARp_forecast(simulated_series, in_sample_window_size, fcast_len, forecast_horizon, ar_order)
             errs
         elseif benchmark_method == :TVAR
             _, errs = TVAR_forecast(
@@ -288,7 +288,7 @@ function calculate_bootstrap_threshold_parallel(i,
     # Compute comparison forecast errors
     comp_errors = begin
         if comparison_method == :ARp
-            _, _, errs = ARp_forecast(simulated_series, in_sample_window_size, fcast_len, forecast_horizon, ar_order)
+            _, errs = ARp_forecast(simulated_series, in_sample_window_size, fcast_len, forecast_horizon, ar_order)
             errs
         elseif comparison_method == :TVAR
             _, errs = TVAR_forecast(
