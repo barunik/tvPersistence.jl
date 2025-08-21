@@ -1,5 +1,5 @@
 """
-    ARp_forecast(data0::Vector, tt::Int, fcast_length::Int, horizon::Int, p::Int) 
+    ARp_forecast(data0::Vector, trainWindow::Int, fcast_length::Int, horizon::Int, p::Int) 
         -> Tuple{Vector, Vector, Vector}
 
 Perform rolling-window h-step-ahead forecasts using an Autoregressive model of order `p`.
@@ -12,60 +12,56 @@ Perform rolling-window h-step-ahead forecasts using an Autoregressive model of o
 - `p::Int`: Number of lags in the AR model.
 
 # Returns
-- `(forecasts, realized, errors)`: Tuple of vectors with:
+- `(horizonForecastAR , errorVsRV)`: Tuple of vectors with:
     - Mean forecasts over horizon,
-    - Realized horizon averages,
     - Forecast errors (forecast - realized).
 """
-function ARp_forecast(
-    data0,        # original series (chronological)
-    tt::Int,                       # rolling window size
-    fcast_length::Int,             # number of forecasts to produce
-    horizon::Int,                  # forecast horizon h
-    p::Int                         # AR order
-)
-    # Center the data
-    μ = mean(data0)
-    y = data0 .- μ
-    T = length(y)
 
-    # Containers
-    forecasts = zeros(fcast_length)
-    realized = zeros(fcast_length)
-    errors   = zeros(fcast_length)
+function ARp_forecast(data::Vector{Float64},
+                  trainWindow::Int,
+                  fcastLength::Int,
+                  horizon::Int,
+                  p::Int)
 
-    for ii in 0:(fcast_length-1)
-        # Define estimation window
-        train_start = ii + 1
-        train_end   = ii + tt
-        # Build OLS design
-        nobs = tt - p
-        X = ones(nobs, p+1)
-        Y = zeros(nobs)
-        for j in 1:nobs
-            t = train_start + p - 1 + j
-            Y[j] = y[t]
-            X[j, 2:end] = y[t-1:-1:t-p]
-        end
-        β = X \ Y  # OLS solution
+    T = length(data)
+    mu = mean(data)
+    centered = data .- mu
+    revCentered = reverse(centered)
 
-        # Recursive h-step forecast
-        history = copy(y[train_end-p+1:train_end])
-        h_fore = zeros(horizon)
-        for h in 1:horizon
-            pred = β[1] + dot(β[2:end], reverse(history))
-            h_fore[h] = pred
-            push!(history, pred)
-            popfirst!(history)
-        end
-        forecasts[ii+1] = mean(h_fore)
-        # Realized mean over next h
-        idx = train_end+1 : train_end+horizon
-        realized[ii+1] = mean(y[idx])
-        errors[ii+1]   = forecasts[ii+1] - realized[ii+1]
+    # The original code recomputed fcast_length:
+    # fcast_length = T - tt - 21 - horizon
+    fcastLength = T - trainWindow - 21 - horizon
+    @assert fcastLength > 0 "Computed forecast length <= 0; check trainWindow/horizon vs T."
+
+    # Rolling average target of reversed, centered data (window = horizon)
+    # length = length(revCentered) - horizon + 1
+    rvH = calculate_rolling_mean(revCentered, horizon)
+
+    horizonForecastAR = zeros(Float64, fcastLength)
+    errorVsRV         = zeros(Float64, fcastLength)
+
+    # ii = 0 .. fcastLength - 1
+    for ii in 0:(fcastLength - 1)
+        # estimation window indices in reversed space
+        lo = fcastLength + horizon - ii
+        hi = fcastLength + trainWindow + horizon - 1 - ii
+        @assert 1 <= lo <= hi <= length(revCentered)
+
+        # put it back to chronological order
+        estSample = reverse(@view revCentered[lo:hi])
+
+        # Fit AR(p) with intercept
+        intercept, phi = fit_ar_ols(estSample, p)
+
+        # h-step recursive path and its mean
+        fpath = forecast_path_ar(estSample, p, horizon, intercept, phi)
+        horizonForecastAR[ii + 1] = mean(fpath)
+
+        # error vs rolling-mean target at the matching index
+        errorVsRV[ii + 1] = horizonForecastAR[ii + 1] - rvH[fcastLength - ii]
     end
 
-    return (forecasts, realized, errors)
+    return horizonForecastAR, errorVsRV
 end
 
 # Time-Varying AR(p) using local linear estimation
@@ -110,7 +106,6 @@ function TVAR_forecast(data0,tt, p, fcast_length,horizon,kernel_width_ARtvp; ker
 
     for ii=0:(fcast_length-1)
     
-        #!!!!! REVERSE ? !!!!! 
         est_sample_tvp = reverse(r[(fcast_length+horizon - ii): (fcast_length+tt+horizon-1-ii)])
         # Generate forecasts
         forecasts_ar1 = mean(forecast_tvAR(est_sample_tvp, p, kernel_width_ARtvp, horizon; tkernel = kernel_type,
@@ -302,121 +297,6 @@ function TVHAR_forecast(data0, tt, fcast_length, horizon,kernel_width; kernel_ty
         Error_HARTVP[ii+1]=(horizon_forecast_corsiTVP[ii+1]-RVh[fcast_length-ii])
  end
     return (horizon_forecast_corsiTVP,Error_HARTVP)
-end
-
-
-### HELPER FUNCTIONS FOR EWD FORECAST ###
-function OLSestimatorconst(y,x)
-    x=[ones(size(x)[1]) x]
-    return (transpose(x)*x) \ (transpose(x)*y)
-end
-
-function IRFalpha(y,x,maxAR,M)
-
-    b=OLSestimator(y,x)
-    Eta=y-x*b;
-    sigma2=(Eta'*Eta)./(length(y)-maxAR)
-    sigma=sqrt.(sigma2)
-    Eps=Eta./sigma;
-
-    alphaR=zeros(M)
-    alphaR[1]=sigma
-
-    for n=1:(length(alphaR)-1) 
-        hstart=max(n-maxAR,0);
-        temp=0;
-        for h=hstart:n-1 
-            temp=temp+alphaR[h+1]*b[n-h]; 
-        end
-        alphaR[n+1]=temp;
-    end
-    return (alphaR,Eps)
-end
-
-function IRFscale(T,maxAR,alpha0,Eps,KMAX,J)
-    # input:  vector alpha of classical Wold innovations
-    #         with length 2^JMAX * constant
-    #         T sample length
-    #         maxAR max lag in the baseline AR
-    #         Eps vector of unit variance classical Wold innovations in reverse order
-    #         KMAX=2^(JMAX+3) maximum lag on scales
-    #         J scale
-    # output: vector betaScale of multiscale IRF at scale J with length length(alpha)/(2^J)
-    #         vector EpsScale of details at scale J in reverse order with length T-maxAR-2^J+1
-    #         vector gScale of component at scale J in reverse order with length T-maxAR-KMAX+1
-    #         vector chronGScale is gScale in chronological order
-
-    # all processes have ZERO MEAN
-   
-    M=length(alpha0);
-    betaScale=zeros(Int(M./(2.0.^J)));
-    for k=0:Int(floor(M/(2^J))-1)
-        betaScale[k+1]=(sum(alpha0[k*2^J+1:k*2^J+2^(J-1)]) - sum(alpha0[k*2^J+2^(J-1)+1:k*2^J+2^J]))./sqrt(2^J);
-    end
-    
-    EpsScale=zeros(T-maxAR-2^J+1);
-    for t=0:1:(length(EpsScale)-1)
-        EpsScale[t+1]= (sum(Eps[t+1:t+2^(J-1)])-sum(Eps[t+2^(J-1)+1:t+2^J]))./sqrt(2^J);
-    end
-    
-    gScale=zeros(T-maxAR-KMAX+1); 
-    for t=0:1:(T-maxAR-KMAX)
-            for k=0:1:(Int(KMAX/(2^J)-1))
-                gScale[t+1]+=betaScale[k+1].*EpsScale[t+k*2^J+1]
-            end
-    end 
-    chronGScale=reverse(gScale);
-    
-    decimGScale=[];
-    for i=1:1:length(gScale)
-        if mod(i-1,2^J)==0
-            push!(decimGScale,gScale[i]);
-        end
-    end
-    
-    return (betaScale,EpsScale,gScale,chronGScale,decimGScale)
-end
-
-function IRFforecast_horizon(T,maxAR,alpha0,Eps,KMAX,J,horizon)
-    
-    # input:  vector alpha of classical Wold innovations
-    #         with length 2^JMAX * constant
-    #         T sample length
-    #         maxAR max lag in the baseline AR
-    #         Eps vector of unit variance classical Wold innovations in reverse order
-    #         KMAX=2^(JMAX+3) maximum lag on scales
-    #         J scale
-    #         horizon max lag in forecasts
-    # output: matrix betaPlus of multiscale IRF Beta k,p at scale J with length length(alpha)/(2^J), p goes from 1 to horizon 
-    #         (see Appendix of Ortu Severino Tamoni Tebaldi)
-    #         vector gScale of forecast for the sum of following week values of scale J in reverse order with length T-maxAR-KMAX+1
-
-    # all processes have ZERO MEAN
-   
-    M=length(alpha0);
-    betaPlus=zeros(Int(floor((M-horizon)/(2^J)))-1,horizon); #collects betak,p
-    for p=1:horizon #p are the steps ahead as in Appendix of Ortu Severino Tamoni Tebaldi
-        for k=0:(Int(floor((M-horizon)/(2^J)))-2)
-            betaPlus[k+1,p]=(sum(alpha0[k*2^J+1+p:k*2^J+2^(J-1)+p])-sum(alpha0[k*2^J+2^(J-1)+1+p:k*2^J+2^J+p]))/sqrt(2^J);
-        end                     
-    end
-    
-    EpsScale=zeros(T-maxAR-2^J+1);
-    for t=0:1:(length(EpsScale)-1)
-        EpsScale[t+1]= (sum(Eps[t+1:t+2^(J-1)])-sum(Eps[t+2^(J-1)+1:t+2^J]))./sqrt(2^J);
-    end
-    
-    gScale=zeros(T-maxAR-KMAX+1,horizon); #now gscale has to contain all the p step ahead forecasts
-    for p=1:horizon
-        for t=0:1:(T-maxAR-KMAX)    
-            for k=0:1:(Int(floor((KMAX-horizon)/(2^J)))-2)
-                gScale[t+1,p]+=betaPlus[k+1,p]*EpsScale[t+k*2^J+1];
-            end
-        end
-    end 
-     gScale=sum(gScale,dims=2) #we make row-wise sums
-    
-    return (betaPlus, gScale)
 end
 
 """
