@@ -217,3 +217,112 @@ function forecast_tvAR(y::AbstractVector, p::Integer, bw::Real,
 
     return forecast
 end
+
+"""
+    forecast_tvAR(y::AbstractVector{<:Real}, p::Integer, bw::Real, n_ahead::Integer;
+                  tkernel::String = "Triweight",
+                  include_intercept::Bool = true,
+                  window_size::Int = 0) -> Vector{Float64}
+
+Multi-step forecast for a time-varying AR(p) model, aligning with the behavior of
+`tvReg::forecast(tvAR(...))`:
+
+- At each horizon step, re-fit time-varying OLS on the current (expanding by default) window.
+- Extract the *last* available coefficient vector (boundary evaluation) and use it to forecast the next point.
+- Append the forecast to the series and repeat.
+
+Arguments
+---------
+- `y`: estimation sample (already preprocessed as you intend — e.g., centered or not).
+- `p`: AR order.
+- `bw`: kernel bandwidth for the time-varying fit.
+- `n_ahead`: number of steps to forecast.
+- `tkernel`: kernel name (default `"Triweight"` to match tvReg defaults).
+- `include_intercept`: include an intercept column in the regression.
+- `window_size`: if `> 0`, use a rolling window of this size (in observations);
+                 if `0` (default), use an expanding window.
+
+Notes
+-----
+- This function assumes a `tvOLS(X, y, bw, tkernel)` function that returns an object
+  with a `coefficients::AbstractMatrix` field of size (T_eff × (p [+ 1])).
+- Coefficient extraction uses the last non-NaN row as a proxy for evaluation at the
+  end of the current sample (similar to tvReg's point-wise evaluation at a future ez).
+"""
+function forecast_tvAR_V2(y::AbstractVector{<:Real},
+                       p::Integer,
+                       bw::Real,
+                       n_ahead::Integer;
+                       tkernel::String = "triweight",
+                       include_intercept::Bool = true,
+                       window_size::Int = 0)::Vector{Float64}
+
+    T = length(y)
+    if p >= T
+        error("AR order p ($p) is too high for the data length ($T).")
+    end
+    if n_ahead <= 0
+        error("n_ahead must be positive.")
+    end
+    if window_size < 0
+        error("window_size must be >= 0.")
+    end
+
+    # Work on a copy because we expand the series as we forecast
+    y_current = collect(y)
+    forecasts = Vector{Float64}(undef, n_ahead)
+
+    for h in 1:n_ahead
+        obs = length(y_current)
+
+        # Choose window start (expanding by default; rolling if window_size > 0)
+        if window_size == 0
+            start_idx = 1
+        else
+            start_idx = max(1, obs - window_size + 1)
+        end
+
+        # Subsample for current fit
+        y_sub = @view y_current[start_idx:obs]
+        n_sub = length(y_sub)
+
+        if n_sub <= p
+            error("Not enough observations in the current window (size=$n_sub) for AR($p) at step $h.")
+        end
+
+        # Build lag matrix: each row is [y[t-p], ..., y[t-1]] in oldest→newest order
+        X_rows = [y_sub[t-p:t-1] for t in (p+1):n_sub]
+        X = hcat(X_rows...)'  # (n_sub - p) × p
+        y_dep = y_sub[p+1:end]
+
+        # Add intercept if requested
+        X_use = include_intercept ? hcat(ones(size(X, 1)), X) : X
+
+        # Re-fit time-varying OLS on the current window
+        result = tvOLS(X_use, y_dep, bw, tkernel)
+        coeffs = result.coefficients  # expected size: (n_sub - p) × (p [+1])
+
+        # Get the last valid coefficient vector (boundary evaluation)
+        last_valid_row = findlast(row -> !any(isnan, row), eachrow(coeffs))
+        if isnothing(last_valid_row)
+            error("No valid coefficients found in tvOLS at step $h.")
+        end
+        beta = collect(coeffs[last_valid_row, :])
+
+        # Split intercept and AR coefficients
+        intercept = include_intercept ? beta[1] : 0.0
+        ar_coeffs = include_intercept ? beta[2:end] : beta
+
+        # Form regressor from the last p values of the CURRENT series (oldest→newest)
+        history = @view y_current[obs - p + 1 : obs]
+
+        # One-step-ahead forecast (no reverse; orientation matches X construction)
+        y_hat = intercept + dot(ar_coeffs, history)
+
+        # Save and append for the next step
+        forecasts[h] = y_hat
+        push!(y_current, y_hat)
+    end
+
+    return forecasts
+end
