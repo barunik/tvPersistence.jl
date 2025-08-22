@@ -240,10 +240,11 @@ function tvEWD_forecast(
     # Extract centered dataset from raw data
     centered_data = data0.-mean(data0)
 
-    # Realized expected value estimation?
+    # Realized expected value estimation
+    reversed_data = reverse(centered_data)
     RVh = zeros(length(centered_data)-horizon+1,1);
     for i=1:length(RVh)
-        RVh[i]=mean(centered_data[i:i+horizon-1])
+        RVh[i]=mean(reversed_data[i:i+horizon-1])
     end
 
     KMAX = Int.(2^(JMAX)*(floor((window_size-maxAR)/(2^(JMAX)))-1))
@@ -444,7 +445,7 @@ function tvEWD_forecast(
 
         # Forecasted value calculation
         forecasted_values[ii+1]=(horizon^(-1).*forecast_scale_component_data[end,:])'*[horizon*scale_component_weights[1]; scale_component_weights[2:end]];
-        realized_values[ii+1] = centered_data[chron_sample_end + 1] # We always forecast the value just outside the sample
+        realized_values[ii+1] = RVh[fcast_length - ii]
         residuals[ii+1] = forecasted_values[ii+1] - realized_values[ii+1]
     end
     return (forecasted_values, realized_values, residuals)
