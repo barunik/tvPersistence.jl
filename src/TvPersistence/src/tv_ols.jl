@@ -268,6 +268,11 @@ function forecast_tvAR_V2(y::AbstractVector{<:Real},
         error("window_size must be >= 0.")
     end
 
+    T0      = length(y)                     # original in-sample length
+    totobs  = T0 + n_ahead                  # global grid size like R
+    y_current = collect(y)
+    forecasts = Vector{Float64}(undef, n_ahead)
+
     # Work on a copy because we expand the series as we forecast
     y_current = collect(y)
     forecasts = Vector{Float64}(undef, n_ahead)
@@ -298,26 +303,22 @@ function forecast_tvAR_V2(y::AbstractVector{<:Real},
         # Add intercept if requested
         X_use = include_intercept ? hcat(ones(size(X, 1)), X) : X
 
-        # Re-fit time-varying OLS on the current window
-        result = tvOLS(X_use, y_dep, bw, tkernel)
-        coeffs = result.coefficients  # expected size: (n_sub - p) × (p [+1])
+        # Scale bandwidth from global [0,1] to local [0,1] grid:
+        bw_eff = bw * (n_sub / totobs)
 
-        # Get the last valid coefficient vector (boundary evaluation)
-        last_valid_row = findlast(row -> !any(isnan, row), eachrow(coeffs))
-        if isnothing(last_valid_row)
-            error("No valid coefficients found in tvOLS at step $h.")
-        end
-        beta = collect(coeffs[last_valid_row, :])
+        # Fit tvOLS on the local window with bw_eff
+        result = tvOLS(X_use, y_dep, bw_eff, tkernel)
 
-        # Split intercept and AR coefficients
+        # Map R's future eval point u = (T0 + h)/totobs into local grid index
+        u       = (T0 + h) / totobs
+        t_star  = clamp(round(Int, u * (n_sub - p)), 1, (n_sub - p))   # coeff rows are (n_sub - p)
+        beta    = collect(result.coefficients[t_star, :])
+
+        # One-step-ahead forecast using last p ys (oldest→newest)
         intercept = include_intercept ? beta[1] : 0.0
         ar_coeffs = include_intercept ? beta[2:end] : beta
-
-        # Form regressor from the last p values of the CURRENT series (oldest→newest)
-        history = @view y_current[obs - p + 1 : obs]
-
-        # One-step-ahead forecast (no reverse; orientation matches X construction)
-        y_hat = intercept + dot(ar_coeffs, history)
+        history   = @view y_current[obs - p + 1 : obs]
+        y_hat     = intercept + dot(ar_coeffs, history)
 
         # Save and append for the next step
         forecasts[h] = y_hat

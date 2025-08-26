@@ -410,7 +410,7 @@ function tvEWD_forecast(
             tvp_trend_vectorized = vec(tvp_trend)
 
             # Forecast the trend horizon-steps ahead
-            forecast_trend_AR = forecast_tvAR(tvp_trend_vectorized,
+            forecast_trend_AR = forecast_tvAR_V2(tvp_trend_vectorized,
             AR_lag_forecast,
             kernel_width_forecast, horizon,
             tkernel = kernel_type)
