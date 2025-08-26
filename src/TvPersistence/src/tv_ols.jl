@@ -136,89 +136,6 @@ function tvOLS(x::Union{AbstractMatrix, AbstractVector}, y::AbstractVector, bw::
 end
 
 """
-    forecast_tvAR(y::AbstractVector, p::Integer, bw::Real, n_ahead::Integer; tkernel::String = "Gaussian") -> Vector{Float64}
-
-Estimate a Time-Varying AR(p) model using tvOLS and generate n_ahead forecasts based on the latest estimated coefficients.
-
-# Arguments
-- `y::Vector{Float64}`: A vector of response variables corresponding to `x`.
-- `bw::Float64`: The bandwidth parameter for the kernel function used in tvOLS.
-- `p::Int`: The order of the AR model (number of lags).
-- `n_ahead::Int`: The number of future steps to forecast.
-- `tkernel::String`: The type of kernel function to use. Options include `"Gaussian"` (default), `"Epanechnikov"`,  `"one-sided"`,  `"triweight"`
-
-# Returns
-- `Vector{Float64}`: A vector containing the forecasted values for the next `n_ahead` periods.
-"""
-function forecast_tvAR(y::AbstractVector, p::Integer, bw::Real,
-     n_ahead::Integer; tkernel::String = "Gaussian", include_intercept::Bool = true)::Vector{Float64}
-
-    T = length(y)
-
-    if p >= T
-        error("AR order p ($p) is too high for the data length ($T).")
-    end
-
-    if n_ahead <= 0
-        error("n_ahead must be positive")
-    end
-
-    # Construct the lagged design matrix for AR(p)
-    # Each row of X_p contains [y[t-p], y[t-p+1], ..., y[t-1]]
-    X_p = [y[t-p:t-1] for t in (p+1):T]
-
-    # Convert to a matrix where each column is a lag
-    X_p_matrix = hcat(X_p...)'  # Matrix of size (T-p) x p
-
-    # Add a column of ones for the intercept
-    X_p_with_intercept = hcat(ones(T-p), X_p_matrix)  # (T-p) x (p+1)
-
-    # Fit the Time-Varying AR(p) model using tvOLS
-    if include_intercept == true
-        result = tvOLS(X_p_with_intercept, y[p+1:T], bw, tkernel)
-    else
-        result = tvOLS(X_p_matrix, y[p+1:T], bw, tkernel)
-    end
-
-    coefficients = result.coefficients  # (T-p) x (p+1)
-
-    # Find the last set of valid (non-NaN) coefficients
-    last_valid = findlast(row -> !any(isnan, row), eachrow(coefficients))
-
-    if isnothing(last_valid)
-        error("No valid coefficients found in tvOLS.")
-    end
-
-    latest_coeff = coefficients[last_valid, :]  # Vector of size (p+1)
-
-    # Extract intercept and AR coefficients
-    if include_intercept == true
-        intercept = latest_coeff[1]
-        ar_coeffs = latest_coeff[2:end]  # Vector of size p
-    else
-        intercept = 0.0
-        ar_coeffs = latest_coeff
-    end
-
-    # Initialize the history with the last p observations
-    history = copy(y[end-p+1:end])
-
-    # Initialize the forecast vector
-    forecast = Vector{Float64}(undef, n_ahead)
-
-    for h in 1:n_ahead
-        # Compute the forecasted value
-        forecast[h] = intercept + dot(ar_coeffs, reverse(history))
-
-        # Update the history with the new forecasted value
-        push!(history, forecast[h])
-        pop!(history)  # Ensure history remains of length p
-    end
-
-    return forecast
-end
-
-"""
     forecast_tvAR(y::AbstractVector{<:Real}, p::Integer, bw::Real, n_ahead::Integer;
                   tkernel::String = "Triweight",
                   include_intercept::Bool = true,
@@ -249,7 +166,7 @@ Notes
 - Coefficient extraction uses the last non-NaN row as a proxy for evaluation at the
   end of the current sample (similar to tvReg's point-wise evaluation at a future ez).
 """
-function forecast_tvAR_V2(y::AbstractVector{<:Real},
+function forecast_tvAR(y::AbstractVector{<:Real},
                        p::Integer,
                        bw::Real,
                        n_ahead::Integer;
