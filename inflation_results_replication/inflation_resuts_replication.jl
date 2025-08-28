@@ -225,7 +225,7 @@ errors=[]
 	push!(errors,res)
 
 output_bson = Dict("errors" => errors, "tt" => tt,"horizon" => horizon, "forecasts"=> forecasts)
-BSON.bson("results_Inflation_$tt-$horizon.bson", output_bson)
+BSON.bson("inflation_results_replication/results_Inflation_$tt-$horizon.bson", output_bson)
 
 println("Horizon 6 completed. ", now())
 flush(stdout)
@@ -285,7 +285,7 @@ errors=[]
 	push!(errors,res)
 
 output_bson = Dict("errors" => errors, "tt" => tt,"horizon" => horizon, "forecasts"=> forecasts)
-BSON.bson("results_Inflation_$tt-$horizon.bson", output_bson)
+BSON.bson("inflation_results_replication/results_Inflation_$tt-$horizon.bson", output_bson)
 
 println("Horizon 12 completed. ", now())
 flush(stdout)
