@@ -335,7 +335,7 @@ function tvEWD_forecast(
             tvp_trend_vectorized = vec(tvp_trend)
 
             # Forecast the trend horizon-steps ahead
-            forecast_trend_AR = forecast_tvAR(tvp_trend_vectorized,
+            forecast_trend_AR = forecast_tvar(tvp_trend_vectorized,
             AR_lag_forecast,
             kernel_width_forecast, horizon,
             tkernel = kernel_type)
@@ -410,10 +410,11 @@ function tvEWD_forecast(
             tvp_trend_vectorized = vec(tvp_trend)
 
             # Forecast the trend horizon-steps ahead
-            forecast_trend_AR = forecast_tvAR(tvp_trend_vectorized,
+            forecast_trend_AR = forecast_tvar(tvp_trend_vectorized,
             AR_lag_forecast,
             kernel_width_forecast, horizon,
-            tkernel = kernel_type)
+            kernel_type = kernel_type,
+            include_intercept = true)
 
             # Average over forecasted periods
             forecast_constant = mean(forecast_trend_AR) # When horizon more than 1, this matters, otherwise it is just forecast_ar

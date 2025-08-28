@@ -171,7 +171,7 @@ function forecast_tvar(data, ar_order::Int, bw::Float64, horizon;
 
     dependent_data = vcat(dependent_data, zeros(horizon))
     totobs = obs + horizon # total number of observations
-    predictions = zeros(horizon, 1)
+    predictions = Vector{Float64}(undef, horizon)
 
     grid_vec = collect(1:totobs)/totobs
 
@@ -200,8 +200,8 @@ function forecast_tvar(data, ar_order::Int, bw::Float64, horizon;
         predictions[t] = dot(new_x, theta)
 
         # update the data used for next step
-        push!(dependent_data_temp, predictions[t])
-        independent_data_temp = vcat(independent_data_temp, new_x)
+        dependent_data[obs + t]      = predictions[t]
+        independent_data[obs + t, :] = new_x'
 
     end
 
