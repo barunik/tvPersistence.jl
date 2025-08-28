@@ -77,7 +77,7 @@ Forecast using a Time-Varying AR(p) model estimated via local linear regression 
 # Returns
 - Tuple `(forecasts, realized, errors)` as vectors for each forecasted point.
 """
-function TVAR_forecast(data0,tt, p, fcast_length,horizon,kernel_width_ARtvp; kernel_type = "triweight")
+function TVAR_forecast(data0,tt, p, fcast_length,horizon,kernel_width_ARtvp; kernel_type = "triweight", include_intercept = true)
     
     T=length(data0)
     muR=mean(data0)
@@ -102,7 +102,7 @@ function TVAR_forecast(data0,tt, p, fcast_length,horizon,kernel_width_ARtvp; ker
         est_sample_tvp = reverse(r[(fcast_length+horizon - ii): (fcast_length+tt+horizon-1-ii)])
         # Generate forecasts
         forecasts_ar1 = mean(forecast_tvAR(est_sample_tvp, p, kernel_width_ARtvp, horizon; tkernel = kernel_type,
-        include_intercept = true))
+        include_intercept = include_intercept))
         horizon_forecast_AR[ii+1] = forecasts_ar1
 
         Error_Jcomp_tvp[ii+1] = (horizon_forecast_AR[ii+1]-RVh[fcast_length-ii])

@@ -82,22 +82,33 @@ The `tvOLS` function performs local linear regression to estimate time-varying c
 """
 function tvOLS(x::Union{AbstractMatrix, AbstractVector}, y::AbstractVector, bw::Float64,
                tkernel::String = "Gaussian";
-               singular_ok::Bool = true)
+               singular_ok::Bool = true,
+               z::Union{Nothing, AbstractVector{<:Real}} = nothing,
+               ez::Union{Nothing, AbstractVector{<:Real}} = nothing)
 
     obs = size(x, 1)
     if length(y) != obs
         error("Dimensions of 'x' and 'y' are not compatible.")
     end
 
+    grid_vec = (z === nothing) ? (collect(1:obs) ./ obs) :
+                (length(z) == obs ? collect(Float64.(z)) :
+                error("vector z must have length = number of rows in x/y ($obs)"))
+
+    
+
+    ez_vec = (ez === nothing) ? grid_vec : collect(Float64.(ez))
+    eobs   = length(ez_vec)
+
     nvar = size(x, 2)
-    theta = zeros(obs, nvar)
-    fitted = zeros(obs)
-    residuals = zeros(obs)
+    theta = zeros(eobs, nvar)
+    fitted = zeros(eobs)
+    residuals = zeros(eobs)
 
-    grid = collect(1:obs) / obs
 
-    for t in 1:obs
-        tau0 = grid .- grid[t]
+
+    for t in 1:eobs
+        tau0 = grid_vec .- ez_vec[t]
         kernel_weights = kernel(tau0, bw, tkernel)
         k_idx = findall(kernel_weights .> 0)
 
@@ -114,9 +125,19 @@ function tvOLS(x::Union{AbstractMatrix, AbstractVector}, y::AbstractVector, bw::
 
         try
             coef = (XW' * XW) \ (XW' * yW)
-            theta[t, :] = coef'
-            fitted[t] = dot(x[t, :], coef)
-            residuals[t] = y[t] - fitted[t]
+            θ = view(coef, 1:nvar)
+            theta[t, :] .= θ
+            row = obs - eobs + t
+            xrow = view(x, row, :)
+            valid = .!isnan.(θ)
+            if any(valid)
+                 fitted[t] = dot(xrow[valid], θ[valid])
+                residuals[t] = y[row] - fitted[t]
+            else
+                fitted[t] = NaN
+                residuals[t] = NaN
+            end
+            
         catch e
             if e isa LinearAlgebra.SingularException
                 if singular_ok
