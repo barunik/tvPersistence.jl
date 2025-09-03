@@ -114,7 +114,7 @@ display(plot([actual_test forecast_test], label=["Data" "Forecast"],frame=:box))
 
 #### Inflation forecasts against benchmarks
 These results can be replicated through the code in "inflation_results_replication/Revision_inflation_REPLICATION.ipynb"
-<p><strong>Forecast errors across horizons (in months)</strong></p>
+<p><strong>Forecast errors across horizons (in months) relative to Random Walk forecasts</strong></p>
 <table>
   <thead>
     <tr>
