@@ -112,6 +112,56 @@ display(plot([actual_test forecast_test], label=["Data" "Forecast"],frame=:box))
 
 ![svg](/readme_files/TV-EWD_forecast_example.svg)
 
+#### Inflation forecasts against benchmarks
+<p><strong>Forecast errors across horizons (lower is better)</strong></p>
+<table>
+  <thead>
+    <tr>
+      <th align="left" rowspan="2">Model</th>
+      <th align="center" colspan="2">h = 1</th>
+      <th align="center" colspan="2">h = 2</th>
+      <th align="center" colspan="2">h = 6</th>
+      <th align="center" colspan="2">h = 12</th>
+    </tr>
+    <tr>
+      <th align="right">RMSE</th><th align="right">MAE</th>
+      <th align="right">RMSE</th><th align="right">MAE</th>
+      <th align="right">RMSE</th><th align="right">MAE</th>
+      <th align="right">RMSE</th><th align="right">MAE</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>AR(2)</td>
+      <td align="right">0.8933</td><td align="right">0.9316</td>
+      <td align="right">0.8306</td><td align="right">0.8897</td>
+      <td align="right">0.7570</td><td align="right">0.8726</td>
+      <td align="right">0.8756</td><td align="right">1.0953</td>
+    </tr>
+    <tr>
+      <td>EWD(2)</td>
+      <td align="right">0.9110</td><td align="right">0.9408</td>
+      <td align="right">0.8378</td><td align="right">0.8847</td>
+      <td align="right">0.7151</td><td align="right">0.7446</td>
+      <td align="right">0.7833</td><td align="right">0.7520</td>
+    </tr>
+    <tr>
+      <td>TV-AR(2)</td>
+      <td align="right">0.9781</td><td align="right">1.0384</td>
+      <td align="right">0.7898</td><td align="right">0.8579</td>
+      <td align="right">0.6997</td><td align="right">0.7070</td>
+      <td align="right">0.8025</td><td align="right">0.7377</td>
+    </tr>
+    <tr>
+      <td>EWDtv(2-3)</td>
+      <td align="right">0.8452</td><td align="right">0.8830</td>
+      <td align="right">0.7602</td><td align="right">0.7922</td>
+      <td align="right">0.6546</td><td align="right">0.6887</td>
+      <td align="right">0.7528</td><td align="right">0.7199</td>
+    </tr>
+  </tbody>
+</table>
+
 ### Part 3: Find and plot Pockets of Predictability
 Here we compare the TV-EWD forecasting approach with the benchmark HAR model through Pockets of Predictability, generating a plot that clearly shows non-spurious pockets given a 95% confidence threshold obtained through bootstrap simulations:
 
