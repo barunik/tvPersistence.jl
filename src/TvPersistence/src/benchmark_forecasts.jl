@@ -1,5 +1,5 @@
 # Random Walk forecasting
-function RW(data0,tt,fcast_length,horizon)
+function RW_forecast(data0,tt,fcast_length,horizon)
     
     T=length(data0)
     muR=mean(data0)
@@ -25,10 +25,10 @@ function RW(data0,tt,fcast_length,horizon)
         horizon_forecast_AR[ii+1] = forecasts_ar1;
  
         # error with J components
-        Error_Jcomp_tvp[ii+1]=  (horizon_forecast_AR[ii+1]-RVh[fcast_length-ii])
+        Error_Jcomp_tvp[ii+1] = (horizon_forecast_AR[ii+1]-RVh[fcast_length-ii])
  
     end
-    return (horizon_forecast_AR,Error_Jcomp_tvp)
+    return horizon_forecast_AR,Error_Jcomp_tvp
 end
 
 """

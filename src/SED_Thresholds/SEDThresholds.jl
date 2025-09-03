@@ -4,7 +4,7 @@ using Random, Statistics, Dates, Colors, LinearAlgebra, StatsBase
 using Plots: plot, plot!, vspan!, hline!
 
 # Bring in TvPersistence via a relative include
-import TvPersistence: ARp_forecast, TVAR_forecast, HAR_forecast, TVHAR_forecast,
+import TvPersistence: ARp_forecast, TVAR_forecast, HAR_forecast, TVHAR_forecast, RW_forecast,
                       EWD_forecast, tvEWD_forecast, ARlags_chron, tvOLS, OLSestimator
 
 include("sed_smoother.jl")

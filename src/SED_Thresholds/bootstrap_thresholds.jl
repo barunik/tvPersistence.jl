@@ -183,7 +183,7 @@ comparing `benchmark_method` and `comparison_method`.
 # Description
 1. Fits an AR model to the original data.
 2. Generates a bootstrap pseudo-series via simulation.
-3. Runs forecast models (`ARp`, `TVAR`, `HAR`, `TVHAR`, `tvEWD`) on each series.
+3. Runs forecast models (`ARp`, `TVAR`, `HAR`, `TVHAR`, `tvEWD`, `RW_forecast`) on each series.
 4. returns smoothed SED series for specified pair of benchmark vs. comparison forecast errors.
 
 
@@ -231,6 +231,9 @@ function calculate_bootstrap_threshold_parallel(i,
     bench_errors = begin
         if benchmark_method == :ARp
             _, errs = ARp_forecast(simulated_series, in_sample_window_size, fcast_len, forecast_horizon, ar_order)
+            errs
+        elseif benchmark_method == :RW
+            _, errs = RW_forecast(simulated_series, in_sample_window_size, fcast_len, forecast_horizon)
             errs
         elseif benchmark_method == :TVAR
             _, errs = TVAR_forecast(
@@ -290,6 +293,8 @@ function calculate_bootstrap_threshold_parallel(i,
         if comparison_method == :ARp
             _, errs = ARp_forecast(simulated_series, in_sample_window_size, fcast_len, forecast_horizon, ar_order)
             errs
+        elseif comparison_method == :RW
+            _, errs = RW_forecast(simulated_series, in_sample_window_size, fcast_len, forecast_horizon)
         elseif comparison_method == :TVAR
             _, errs = TVAR_forecast(
                 simulated_series,
