@@ -855,18 +855,6 @@ version = "2.11.2"
     [deps.QuadGK.weakdeps]
     Enzyme = "7da242da-08ed-463a-9acd-ee780be4f1d9"
 
-[[deps.RCall]]
-deps = ["CategoricalArrays", "Conda", "DataFrames", "DataStructures", "Dates", "Libdl", "Preferences", "REPL", "Random", "StatsModels", "WinReg"]
-git-tree-sha1 = "7521292e0ca900751cf0f35f2a2faf1cb321e960"
-uuid = "6f49c342-dc21-5d91-9882-a32aef131414"
-version = "0.14.9"
-
-    [deps.RCall.extensions]
-    RCallAxisArraysExt = ["AxisArrays"]
-
-    [deps.RCall.weakdeps]
-    AxisArrays = "39de3d68-74b9-583c-8d2d-e117c070f3a9"
-
 [[deps.REPL]]
 deps = ["InteractiveUtils", "Markdown", "Sockets", "StyledStrings", "Unicode"]
 uuid = "3fa0cd96-eef1-5676-8a61-b3b8758bbffb"
