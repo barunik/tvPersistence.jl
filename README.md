@@ -113,7 +113,7 @@ display(plot([actual_test forecast_test], label=["Data" "Forecast"],frame=:box))
 ![svg](/readme_files/TV-EWD_forecast_example.svg)
 
 #### Inflation forecasts against benchmarks
-<p><strong>Forecast errors across horizons (lower is better)</strong></p>
+<p><strong>Forecast errors across horizons (in months)</strong></p>
 <table>
   <thead>
     <tr>
