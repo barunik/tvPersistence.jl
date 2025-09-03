@@ -1,3 +1,36 @@
+# Random Walk forecasting
+function RW(data0,tt,fcast_length,horizon)
+    
+    T=length(data0)
+    muR=mean(data0)
+    chronR=data0.-muR;
+    r=reverse(chronR);
+
+    RVh = zeros(length(r)-horizon+1,1);
+    for i=1:length(RVh)
+        RVh[i]=mean(r[i:i+horizon-1])
+    end
+
+    
+    horizon_forecast_AR= zeros(fcast_length);
+    Error_Jcomp_tvp=zeros(fcast_length);
+
+    for ii=0:(fcast_length-1)
+        # reverse back into chornological order
+        est_sample_tvp = reverse(r[(fcast_length+horizon - ii): (fcast_length+tt+horizon-1-ii)])
+        
+        forecasts_ar1 =[]
+        forecasts_ar1 = est_sample_tvp[end];
+        
+        horizon_forecast_AR[ii+1] = forecasts_ar1;
+ 
+        # error with J components
+        Error_Jcomp_tvp[ii+1]=  (horizon_forecast_AR[ii+1]-RVh[fcast_length-ii])
+ 
+    end
+    return (horizon_forecast_AR,Error_Jcomp_tvp)
+end
+
 """
     ARp_forecast(data0::Vector, trainWindow::Int, fcast_length::Int, horizon::Int, p::Int) 
         -> Tuple{Vector, Vector, Vector}
