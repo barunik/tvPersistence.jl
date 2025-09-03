@@ -133,28 +133,28 @@ These results can be replicated through the code in "inflation_results_replicati
   </thead>
   <tbody>
     <tr>
-      <td>AR(2)</td>
+      <td>AR</td>
       <td align="right">0.8933</td><td align="right">0.9316</td>
       <td align="right">0.8306</td><td align="right">0.8897</td>
       <td align="right">0.7570</td><td align="right">0.8726</td>
       <td align="right">0.8756</td><td align="right">1.0953</td>
     </tr>
     <tr>
-      <td>EWD(2)</td>
+      <td>EWD</td>
       <td align="right">0.9110</td><td align="right">0.9408</td>
       <td align="right">0.8378</td><td align="right">0.8847</td>
       <td align="right">0.7151</td><td align="right">0.7446</td>
       <td align="right">0.7833</td><td align="right">0.7520</td>
     </tr>
     <tr>
-      <td>TV-AR(2)</td>
+      <td>TV-AR</td>
       <td align="right">0.9781</td><td align="right">1.0384</td>
       <td align="right">0.7898</td><td align="right">0.8579</td>
       <td align="right">0.6997</td><td align="right">0.7070</td>
       <td align="right">0.8025</td><td align="right">0.7377</td>
     </tr>
     <tr>
-      <td>EWDtv(2-3)</td>
+      <td>EWDtv</td>
       <td align="right">0.8452</td><td align="right">0.8830</td>
       <td align="right">0.7602</td><td align="right">0.7922</td>
       <td align="right">0.6546</td><td align="right">0.6887</td>

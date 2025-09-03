@@ -167,31 +167,3 @@ tvEWD_vs_HAR_pockets = SEDThresholds.plot_pockets(Float64.(winsor(har_e,prop=0.0
 display(tvEWD_vs_HAR_pockets)
 
 savefig("pockets_of_predictability_example.svg")
-
-# Pockets for Inflation (TV-EWD against RW)
-# Load example data
-data_read_inflation=CSV.File("PCEpi.csv",missingstring=["NA"],header=false) |> DataFrame;
-data0_inflation=data_read_inflation.Column1[ismissing.(data_read_inflation.Column1).==false];
-#date_vector = data_read[ismissing.(data_read_inflation.Column1).==false,:dates];
-#date_vector = Date.(date_vector, "dd.mm.yyyy")
-#forecast_dates = date_vector[tt+1:tt+fcast_length]
-
-#––– Forecast Parameters –––
-tt           = 600 # Fisrt 1000 days for model fitting
-fcast_length = 2258 # rolling-window forecasts until the end
-horizon      = 1
-bw           = 0.3 # Kernel bandwidth for TV-OLS based models
-p            = 1   # AR order for AR and TV‐AR
-
-#––– Generate forecasts –––
-inflation_data = read
-TV_EWD_f, TV_EWD_r, TV_EWD_e = TvPersistence.tvEWD_forecast(data0, tt, 1, 2, 1, 5, 0.05, 0.2, 0.5, 
-    kernel_type = "Epa",
-    LASSO_scale_selection = false,
-    forecast_window_size = fcast_length); # Scales 1-5
-
-RW_f, RW_e  = TvPersistence.RW_forecast(data0, tt, fcast_length, horizon)
-threshold_fixed = 2.066830453726511e-6
-tvEWD_vs_RW_pockets = SEDThresholds.plot_pockets(Float64.(winsor(RW_e,prop=0.05)), Float64.(winsor(TV_EWD_e,prop=0.05)), forecast_dates, 0.01,threshold_fixed; title = "TV-EWD vs. RW (h=1)",
-                plot_zero_pockets = true)
-display(tvEWD_vs_HAR_pockets)
