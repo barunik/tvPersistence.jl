@@ -133,9 +133,11 @@ mycolor=[colorant"rgb(222,102,62)",colorant"rgb(255,145,43)",colorant"rgb(76,144
 function plot_pockets(
     err_benchmark,
     err_model,
-    date_vector,
+   date_vector,
     smoothing_bandwidth,
     thresholds;
+    kernel_type = "one-sided",
+    include_intercept = false,
     plot_zero_pockets = false,
     auto_xticks     = true,
     user_xticks     = nothing,
@@ -155,7 +157,7 @@ function plot_pockets(
     ylabel_fontsize = 10
 )
     # 1) compute the SED curve once
-    sed_curve = SED_smooth_one(err_benchmark, err_model, smoothing_bandwidth)
+    sed_curve = SED_smooth_one(err_benchmark, err_model, smoothing_bandwidth, kernel_type, include_intercept)
 
     # 2) determine x‐axis ticks
     if auto_xticks == true
@@ -191,16 +193,13 @@ function plot_pockets(
     # 5) shade each pocket band (skip zero if you like)
     for (i, thr) in enumerate(threshold_levels)
         mask = sed_curve .> thr
-        for (start, stop) in find_intervals(mask)
-            vspan!(
-                p,
-                start:stop;
-                color     = pocket_colors[i],
-                alpha     = pocket_alphas[i],
-                linecolor = :transparent,
-                label     = false
-            )
-        end
+        plot!(p,
+            [[s,e] for (s,e) in find_intervals(mask)];
+            seriestype = :vspan,
+            color      = pocket_colors[i],
+            alpha      = pocket_alphas[i],
+            linecolor  = :transparent,
+            label      = false)
     end
 
     # 6) overlay the SED line and horizontal thresholds
