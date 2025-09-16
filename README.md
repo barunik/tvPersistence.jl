@@ -18,7 +18,28 @@ Pkg.activate(".") # activating project in its directory
 Pkg.instantiate() # installing packages with which versions the project is built
 ```
 
-## Example usage (Inflation)
+# Example usage
+Here we showcase how to use the code to produce forecasts and persistence decompositions on two different time-series: daily realized volatility of Agilent Technologies stock and monthly inflation.
+
+Load packages:
+
+```julia
+using CSV, DataFrames, BSON, Random, Dates, Plots, StatsBase
+using BSON: @save, @load
+```
+
+Load modules containing core functions:
+
+```julia
+# Core TV-EWD functionality module
+include("src/TvPersistence/TvPersistence.jl")
+using .TvPersistence
+# SED Threshold calculations and Pockets of Predictability functionality
+include("src/SED_Thresholds/SEDThresholds.jl")
+using .SEDThresholds
+```
+
+## 1. Example usage (Inflation)
 
 #### Inflation forecasts against benchmarks
 These results can be replicated through the code in "inflation_results_replication/Revision_inflation_REPLICATION.ipynb"
@@ -71,27 +92,9 @@ These results can be replicated through the code in "inflation_results_replicati
   </tbody>
 </table>
 
-## Example usage (Realized Volatility)
+## 2. Example usage (Realized Volatility)
 
 This example iillustrates how to obtain the decomposition of dynamic persistence as well as forecasts on a sample series of Realized Volatility of returns on Agilent Technologies stock.
-
-Load packages:
-
-```julia
-using CSV, DataFrames, BSON, Random, Dates, Plots, StatsBase
-using BSON: @save, @load
-```
-
-Load modules containing core functions:
-
-```julia
-# Core TV-EWD functionality module
-include("src/TvPersistence/TvPersistence.jl")
-using .TvPersistence
-# SED Threshold calculations and Pockets of Predictability functionality
-include("src/SED_Thresholds/SEDThresholds.jl")
-using .SEDThresholds
-```
 
 Load example data:
 
