@@ -167,3 +167,21 @@ tvEWD_vs_HAR_pockets = SEDThresholds.plot_pockets(Float64.(winsor(har_e,prop=0.0
 display(tvEWD_vs_HAR_pockets)
 
 savefig("pockets_of_predictability_example.svg")
+
+# INFLATION example ### 
+data_read_inflation=CSV.File("PCEpi.csv",missingstring=["NA"],header=false) |> DataFrame;
+data0_inflation=100.0.*data_read_inflation.Column1[ismissing.(data_read_inflation.Column1).==false];
+
+# decomposition
+decomp_new_inflation = TvPersistence.tv_persistence_plot(data0_inflation,5,7,0.15,0.02, "Gaussian", "Gaussian");
+yearfirstb_new_inflation = decomp_new_inflation./sum(decomp_new_inflation,dims=2);
+
+year_ticks = unique(year.(date_vector[6:end]))
+xtick_dates = Date.(year_ticks,1,1)
+myrainbow=reverse(cgrad(:RdYlBu_7, 7, categorical = true));
+
+plot(date_vector[6:end],yearfirstb_new,size=(700,700/1.6666),color=[myrainbow[1] myrainbow[2] myrainbow[3] cgrad(:grayC, 7, categorical = true)[2] myrainbow[5] myrainbow[6] myrainbow[7]],frame=:box,
+    linestyle=:dot,linealpha=0.7,label=false,legend=:topleft,yaxis="A") 
+xticks!(Dates.value.(xtick_dates), string.(year_ticks))
+scatter!(date_vector[6:12:end],yearfirstb_new[1:12:size(yearfirstb_new,1),:],color=[myrainbow[1] myrainbow[2] myrainbow[3] cgrad(:grayC, 7, categorical = true)[2] myrainbow[5] myrainbow[6] myrainbow[7]],
+    label=["2 days" "4" "8" "16" "32" "64" "128+"],msc=:white,markersize=3,markershape=[:circle :diamond :utriangle :+ :x :heptagon :dtriangle])
