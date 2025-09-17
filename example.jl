@@ -181,7 +181,7 @@ kernel_width_for_const 	= 0.05; # deterministic (constant) forecast
  kernel_width_HAR		= 0.3; 	# kernel for TVP-AR3 TVP-HAR model 
  JMAX=5;
 
-data_read_inflation=CSV.File("PCEpi.csv",missingstring=["NA"],header=false) |> DataFrame;
+data_read_inflation=CSV.File("data/PCEpi.csv",missingstring=["NA"],header=false) |> DataFrame;
 data0_inflation=100.0.*data_read_inflation.Column1[ismissing.(data_read_inflation.Column1).==false];
 
 # decomposition
@@ -199,4 +199,4 @@ scatter!(1:12:size(yearfirstb_new_inflation,1),yearfirstb_new_inflation[1:12:siz
     label=["2 months" "4 months" "8 months" "16 months" "32 months"],msc=:white,markershape=[:circle :diamond :utriangle :+ :x])
 
 plot!(fontfamily="serif-roman",titlefontsize=10, xtickfontsize=10,ytickfontsize=10,ylabelfontsize=10)
-savefig("figure_pce.pdf")
+savefig("readme_files/figure_pce.pdf")
