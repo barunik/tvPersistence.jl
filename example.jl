@@ -169,19 +169,34 @@ display(tvEWD_vs_HAR_pockets)
 savefig("pockets_of_predictability_example.svg")
 
 # INFLATION example ### 
+myrainbow=[colorant"#045275",colorant"#089099",colorant"#7CCBA2",colorant"#FCDE9C",colorant"#F0746E",colorant"#DC3977",colorant"#7C1D6F"]
+maxAR					=3;
+
+kernel_width_for_const 	= 0.05; # deterministic (constant) forecast
+
+ kernel_width_IRF		= 0.05;  # IRFs on errors
+
+ kernel_width_forecast 	= 0.6;  # forecast of constant (K3)
+ AR_lag_forecast 		= 1;	# AR lag choice for forecast of constant
+ kernel_width_HAR		= 0.3; 	# kernel for TVP-AR3 TVP-HAR model 
+ JMAX=5;
+
 data_read_inflation=CSV.File("PCEpi.csv",missingstring=["NA"],header=false) |> DataFrame;
 data0_inflation=100.0.*data_read_inflation.Column1[ismissing.(data_read_inflation.Column1).==false];
 
 # decomposition
-decomp_new_inflation = TvPersistence.tv_persistence_plot(data0_inflation,5,7,0.15,0.02, "Gaussian", "Gaussian");
+decomp_new_inflation = TvPersistence.tv_persistence_plot(data0_inflation,
+                            maxAR, JMAX,
+                            kernel_width_for_const,
+                            kernel_width_IRF,
+                             "triweight", "triweight");
 yearfirstb_new_inflation = decomp_new_inflation./sum(decomp_new_inflation,dims=2);
 
-year_ticks = unique(year.(date_vector[6:end]))
-xtick_dates = Date.(year_ticks,1,1)
-myrainbow=reverse(cgrad(:RdYlBu_7, 7, categorical = true));
+plot(1:size(yearfirstb_new_inflation,1),yearfirstb_new_inflation,size=(700,700/1.6666),color=[myrainbow[1] myrainbow[3] myrainbow[5] myrainbow[6] myrainbow[7]],frame=:box,
+    linestyle=:dash,linealpha=0.7,label=false,
+    xticks=([8,68,128,188,248,308,368,428,488,548,608,668,728],["1960","1965","1970","1975","1980","1985","1990","1995","2000","2005","2010","2015","2020"])) 
+scatter!(1:12:size(yearfirstb_new_inflation,1),yearfirstb_new_inflation[1:12:size(yearfirstb_new_inflation,1),:],color=[myrainbow[1] myrainbow[3] myrainbow[5] myrainbow[6] myrainbow[7]],
+    label=["2 months" "4 months" "8 months" "16 months" "32 months"],msc=:white,markershape=[:circle :diamond :utriangle :+ :x])
 
-plot(date_vector[6:end],yearfirstb_new,size=(700,700/1.6666),color=[myrainbow[1] myrainbow[2] myrainbow[3] cgrad(:grayC, 7, categorical = true)[2] myrainbow[5] myrainbow[6] myrainbow[7]],frame=:box,
-    linestyle=:dot,linealpha=0.7,label=false,legend=:topleft,yaxis="A") 
-xticks!(Dates.value.(xtick_dates), string.(year_ticks))
-scatter!(date_vector[6:12:end],yearfirstb_new[1:12:size(yearfirstb_new,1),:],color=[myrainbow[1] myrainbow[2] myrainbow[3] cgrad(:grayC, 7, categorical = true)[2] myrainbow[5] myrainbow[6] myrainbow[7]],
-    label=["2 days" "4" "8" "16" "32" "64" "128+"],msc=:white,markersize=3,markershape=[:circle :diamond :utriangle :+ :x :heptagon :dtriangle])
+plot!(fontfamily="serif-roman",titlefontsize=10, xtickfontsize=10,ytickfontsize=10,ylabelfontsize=10)
+savefig("figure_pce.pdf")
