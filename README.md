@@ -41,6 +41,45 @@ using .SEDThresholds
 
 ## 1. Example usage (Inflation)
 
+#### Persistence Plot
+Here we calculate the multiscale impulse response functions $\beta^{\{j\}}(u,k)$ and plot the ratios $\frac{\beta^{\{j\}}(u,k)}{\sum_j \beta^{\{j\}}(u,k)}$ over time to provide a visual overview of the relative importance of shock components persistent at different scales. Specifically, we can see persistence components for inflation at horizons of 2,4,8,16,32 months.
+
+```julia
+myrainbow=[colorant"#045275",colorant"#089099",colorant"#7CCBA2",colorant"#FCDE9C",colorant"#F0746E",colorant"#DC3977",colorant"#7C1D6F"]
+maxAR					=3;
+
+kernel_width_for_const 	= 0.05;
+
+ kernel_width_IRF		= 0.05;
+
+ kernel_width_forecast 	= 0.6;
+ AR_lag_forecast 		= 1;
+ kernel_width_HAR		= 0.3;
+ JMAX=5;
+
+# load inflation data
+data_read_inflation=CSV.File("data/PCEpi.csv",missingstring=["NA"],header=false) |> DataFrame;
+data0_inflation=100.0.*data_read_inflation.Column1[ismissing.(data_read_inflation.Column1).==false];
+
+# decomposition
+decomp_new_inflation = TvPersistence.tv_persistence_plot(data0_inflation,
+                            maxAR, JMAX,
+                            kernel_width_for_const,
+                            kernel_width_IRF,
+                             "triweight", "triweight");
+
+# Relative importance of shocks calculation
+yearfirstb_new_inflation = decomp_new_inflation./sum(decomp_new_inflation,dims=2);
+
+plot(1:size(yearfirstb_new_inflation,1),yearfirstb_new_inflation,size=(700,700/1.6666),color=[myrainbow[1] myrainbow[3] myrainbow[5] myrainbow[6] myrainbow[7]],frame=:box,
+    linestyle=:dash,linealpha=0.7,label=false,
+    xticks=([8,68,128,188,248,308,368,428,488,548,608,668,728],["1960","1965","1970","1975","1980","1985","1990","1995","2000","2005","2010","2015","2020"])) 
+scatter!(1:12:size(yearfirstb_new_inflation,1),yearfirstb_new_inflation[1:12:size(yearfirstb_new_inflation,1),:],color=[myrainbow[1] myrainbow[3] myrainbow[5] myrainbow[6] myrainbow[7]],
+    label=["2 months" "4 months" "8 months" "16 months" "32 months"],msc=:white,markershape=[:circle :diamond :utriangle :+ :x])
+
+plot!(fontfamily="serif-roman",titlefontsize=10, xtickfontsize=10,ytickfontsize=10,ylabelfontsize=10)
+```
+
 #### Inflation forecasts against benchmarks
 These results can be replicated through the code in "inflation_results_replication/Revision_inflation_REPLICATION.ipynb"
 <p><strong>Forecast errors across horizons (in months) relative to Random Walk forecasts</strong></p>
