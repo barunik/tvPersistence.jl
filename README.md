@@ -79,6 +79,7 @@ scatter!(1:12:size(yearfirstb_new_inflation,1),yearfirstb_new_inflation[1:12:siz
 
 plot!(fontfamily="serif-roman",titlefontsize=10, xtickfontsize=10,ytickfontsize=10,ylabelfontsize=10)
 ```
+![PCE Figure](figures/pce_figure.png)
 
 #### Inflation forecasts against benchmarks
 These results can be replicated through the code in "inflation_results_replication/Revision_inflation_REPLICATION.ipynb"
