@@ -200,3 +200,38 @@ scatter!(1:12:size(yearfirstb_new_inflation,1),yearfirstb_new_inflation[1:12:siz
 
 plot!(fontfamily="serif-roman",titlefontsize=10, xtickfontsize=10,ytickfontsize=10,ylabelfontsize=10)
 savefig("readme_files/figure_pce.pdf")
+
+# Pockets of Predictability TV-EWD vs. HAR
+include("src/SED_Thresholds/SEDThresholds.jl")
+using .SEDThresholds
+
+bw = 0.03
+mycolor=[colorant"rgb(222,102,62)",colorant"rgb(255,145,43)",colorant"rgb(76,144,186)",colorant"rgb(43,194,194)",colorant"rgb(244,184,17)"];
+
+# plot the pockets
+p1 = SEDThresholds.plot_pockets(
+    har_e,
+    TV_EWD_e,
+    date_vector,
+    bw,
+    4.43600186008676e-8; # bootstrap calculated threshold
+    include_intercept = true,
+    kernel_type = "one-sided",
+    plot_zero_pockets = true,
+    title = "TV-EWD vs. HAR",
+    auto_xticks = true,
+    pocket_colors = [mycolor[4], mycolor[3]],
+    pocket_alphas = [0.2, 0.3],
+    sed_line_color = mycolor[1],
+    hline_color = mycolor[3],
+    hline_style = :dash,
+    base_line_color = :white,
+    plot_size = (1000,200),
+    framestyle = :box,
+    fontfamily = "serif-roman",
+    title_fontsize = 10,
+    xtick_fontsize = 10,
+    ytick_fontsize = 10,
+    ylabel_fontsize = 10
+)
+savefig(p1, "readme_files/pockets_plot_inflation.pdf")
