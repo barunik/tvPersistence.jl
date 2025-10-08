@@ -238,7 +238,7 @@ function calculate_bootstrap_threshold_parallel(i, # number of simulations
     )
 ```
 
-We use realized volatility of Agilent stock as our data series to calculate the threshold (the complete code can be found in [Open my file](./SED_threshold_example.ipynb)). First, import necessary packages:
+We use realized volatility of Agilent stock as our data series to calculate the threshold (the complete code can be found in [This notebook](./SED_threshold_example.ipynb)). First, import necessary packages:
 
 ```julia
 using Distributed
@@ -444,4 +444,4 @@ p1 = SEDThresholds.plot_pockets(
 display(p1)
 ```
 
-![svg](/pockets_volatility_agilent/.svg)
+![svg](/readme_files/pockets_volatility_agilent/.svg)
