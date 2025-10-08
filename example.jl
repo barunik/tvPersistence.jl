@@ -208,6 +208,10 @@ using .SEDThresholds
 bw = 0.03
 mycolor=[colorant"rgb(222,102,62)",colorant"rgb(255,145,43)",colorant"rgb(76,144,186)",colorant"rgb(43,194,194)",colorant"rgb(244,184,17)"];
 
+# winsorize the errors
+har_e = Float64.(winsor(har_e, prop=0.05))
+TV_EWD_e = Float64.(winsor(TV_EWD_e, prop=0.05))
+
 # plot the pockets
 p1 = SEDThresholds.plot_pockets(
     har_e,
@@ -234,4 +238,6 @@ p1 = SEDThresholds.plot_pockets(
     ytick_fontsize = 10,
     ylabel_fontsize = 10
 )
-savefig(p1, "readme_files/pockets_volatility_agilent.pdf")
+
+display(p1)
+savefig(p1, "readme_files/pockets_volatility_agilent.svg")
