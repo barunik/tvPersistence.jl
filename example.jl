@@ -234,4 +234,4 @@ p1 = SEDThresholds.plot_pockets(
     ytick_fontsize = 10,
     ylabel_fontsize = 10
 )
-savefig(p1, "readme_files/pockets_plot_inflation.pdf")
+savefig(p1, "readme_files/pockets_volatility_agilent.pdf")
