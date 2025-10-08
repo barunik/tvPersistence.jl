@@ -444,4 +444,4 @@ p1 = SEDThresholds.plot_pockets(
 display(p1)
 ```
 
-![svg](/readme_files/pockets_volatility_agilent/.svg)
+![svg](/readme_files/pockets_volatility_agilent.svg)
