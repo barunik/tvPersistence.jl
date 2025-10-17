@@ -357,49 +357,6 @@ horizon      = 1
 bw           = 0.3 # Kernel bandwidth for TV-OLS based models
 p            = 1   # AR order for AR and TV‐AR
 
-#––– Generate forecasts –––
-TV_EWD_f, TV_EWD_r, TV_EWD_e = tvEWD_forecast(data0, tt, 1, 2, 1, 5, 0.05, 0.2, 0.5, 
-    kernel_type = "Epa",
-    LASSO_scale_selection = false,
-    forecast_window_size = fcast_length); # Scales 1-7
-har_f,    har_r,    har_e    = HAR_forecast_legacy(data0, tt, fcast_length, horizon);
-
-# Alternatively, load from the BSON file attached
-@load "all_forecasts_V2.bson" forecasts
-har_e = forecasts.har_e
-TV_EWD_e = forecasts.TV_EWD_e
-
-# Save the corresponding date vector for Pockets plotting
-forecast_dates = date_vector[tt+1:tt+fcast_length]
-```
-
-#### Step 3: Plot Pockets of Predictability
-The plot_pockets() function generates a plot showcasing periods where the model of interest (TV-EWD in our case) achieves a better forecasting performance than the benchmark model (HAR in our case)
-
-```julia
-plot_pockets(
-    err_benchmark, # forecast errors of benchmark model
-    err_model, # forecast errors of the model of interest
-    date_vector, # date vector corresponding to forecast errors in length
-    smoothing_bandwidth, # for local linear estimation of out of sample SED
-    thresholds; # thresholds for identifying spurious Pockets of Predictability contained in an array. By default, 0.0 is included as well
-    auto_xticks     = true, # automatically extract date ticks for the plot
-    user_xticks     = nothing, # user-defined ticks as an array of positions in the error vector
-    title           = "", # plot title
-    pocket_colors   = [mycolor[3], mycolor[4]], # pockets colouring. Length of this array needs to coincide with length of "thresholds"
-    pocket_alphas   = [0.6, 0.3],
-    base_line_color = :white,
-    sed_line_color  = mycolor[1],
-    hline_color     = mycolor[3],
-    hline_style     = :dash,
-    plot_size       = (1000,200),
-    framestyle      = :box,
-    xtickfontsize  = xtick_fontsize,
-    ytickfontsize  = ytick_fontsize,
-    ylabelfontsize = ylabel_fontsize)
-```
-
-```julia
 #––– Generate forecasts –––¨
 #TV-EWD
 TV_EWD_f, TV_EWD_r, TV_EWD_e = TvPersistence.tvEWD_forecast(data0, tt, 1, 2, 1, 5, 0.05, 0.2, 0.5, 
@@ -413,7 +370,10 @@ har_f, har_e, har_r,_    = TvPersistence.HAR_forecast(data0, tt, fcast_length, h
 # Winsorize forecast errors
 har_e = Float64.(winsor(har_e, prop=0.05))
 TV_EWD_e = Float64.(winsor(TV_EWD_e, prop=0.05))
+```
+#### Step 3: Plot Pockets of Predictability
 
+```julia
 # Plot the pockets
 p1 = SEDThresholds.plot_pockets(
     har_e,
